@@ -11,7 +11,21 @@
 [![Maven Central](https://img.shields.io/maven-central/v/com.artipie/composer-adapter.svg)](https://maven-badges.herokuapp.com/maven-central/com.artipie/composer-adapter)
 [![PDD status](http://www.0pdd.com/svg?name=artipie/composer-adapter)](http://www.0pdd.com/p?name=artipie/composer-adapter)
 
-This is a simple storage, used in a few other projects.
+This Java library turns your binary [ASTO](https://github.com/artipie/asto) 
+storage into a PHP Composer repository.
+
+Similar solutions:
+
+  * [Packagist](https://packagist.org/)
+  * [Packagist Private](https://packagist.com/)
+  * [Satis](https://github.com/composer/satis)
+  * [Artifactory](https://www.jfrog.com/confluence/display/RTF/PHP+Composer+Repositories)
+
+Some valuable references:
+
+  * [Composer Documentation](https://getcomposer.org/doc/)
+  * [Packagist Private API](https://packagist.com/docs/api)
+  * [Composer GitHub](https://github.com/composer)
 
 This is the dependency you need:
 
