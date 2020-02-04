@@ -24,20 +24,31 @@
 
 package com.artpie.composer;
 
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.fs.FileStorage;
+import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonWriter;
+import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+// @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
  * Tests for {@link Repository}.
  *
@@ -50,9 +61,19 @@ class RepositoryTest {
      */
     private Storage storage;
 
+    /**
+     * Example package read from 'minimal-package.json'.
+     */
+    private Package pack;
+
     @BeforeEach
-    void init(final @TempDir Path temp) {
+    void init(final @TempDir Path temp) throws Exception {
         this.storage = new FileStorage(temp);
+        this.pack = new JsonPackage(
+            ByteSource.wrap(
+                ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
+            )
+        );
     }
 
     @Test
@@ -60,12 +81,7 @@ class RepositoryTest {
         final Name name = new Name("foo/bar");
         final Packages packages = new Repository(this.storage).packages(name);
         packages.save(this.storage, name.key()).get();
-        final JsonObject saved;
-        final byte[] bytes = new BlockingStorage(this.storage).value(name.key());
-        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
-            saved = reader.readObject();
-        }
-        MatcherAssert.assertThat(saved.getJsonObject("packages").keySet(), Matchers.empty());
+        MatcherAssert.assertThat(this.packages(name).keySet(), Matchers.empty());
     }
 
     @Test
@@ -79,5 +95,53 @@ class RepositoryTest {
             new BlockingStorage(this.storage).value(name.key()),
             Matchers.equalTo(bytes)
         );
+    }
+
+    @Test
+    void shouldAddPackage() throws Exception {
+        final Key.From key = this.savePackage();
+        new Repository(this.storage).add(key).get();
+        final Name name = this.pack.name();
+        MatcherAssert.assertThat(
+            this.packages(name).getJsonObject(name.string()).keySet(),
+            Matchers.equalTo(Collections.singleton(this.pack.version()))
+        );
+    }
+
+    @Test
+    void shouldAddPackageWhenOtherVersionExists() throws Exception {
+        final Name name = this.pack.name();
+        new BlockingStorage(this.storage).save(
+            name.key(),
+            "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}".getBytes()
+        );
+        final Key.From key = this.savePackage();
+        new Repository(this.storage).add(key).get();
+        MatcherAssert.assertThat(
+            this.packages(name).getJsonObject(name.string()).keySet(),
+            Matchers.equalTo(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
+        );
+    }
+
+    private JsonObject packages(final Name name) {
+        final JsonObject saved;
+        final byte[] bytes = new BlockingStorage(this.storage).value(name.key());
+        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
+            saved = reader.readObject();
+        }
+        return saved.getJsonObject("packages");
+    }
+
+    private Key.From savePackage() throws IOException {
+        final byte[] bytes;
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+            JsonWriter writer = Json.createWriter(out)) {
+            writer.writeObject(this.pack.json());
+            out.flush();
+            bytes = out.toByteArray();
+        }
+        final Key.From key = new Key.From("pack");
+        new BlockingStorage(this.storage).save(key, bytes);
+        return key;
     }
 }
