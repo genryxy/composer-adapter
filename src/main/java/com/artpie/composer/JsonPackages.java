@@ -63,6 +63,19 @@ public final class JsonPackages implements Packages {
         this.content = content;
     }
 
+    /**
+     * Ctor.
+     */
+    public JsonPackages() {
+        this(
+            bytes(
+                Json.createObjectBuilder()
+                    .add(JsonPackages.ATTRIBUTE, Json.createObjectBuilder())
+                    .build()
+            )
+        );
+    }
+
     @Override
     public Packages add(final Package pack) throws IOException {
         final JsonObject json = this.json();
@@ -128,15 +141,17 @@ public final class JsonPackages implements Packages {
      *
      * @param json JSON object.
      * @return Serialized JSON object.
-     * @throws IOException In case of any I/O problems.
      */
-    private static ByteSource bytes(final JsonObject json) throws IOException {
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-            JsonWriter writer = Json.createWriter(out)) {
-            writer.writeObject(json);
-            out.flush();
-            return ByteSource.wrap(out.toByteArray());
+    private static ByteSource bytes(final JsonObject json) {
+        try {
+            try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                JsonWriter writer = Json.createWriter(out)) {
+                writer.writeObject(json);
+                out.flush();
+                return ByteSource.wrap(out.toByteArray());
+            }
+        } catch (final IOException ex) {
+            throw new IllegalArgumentException("Failed to serialize JSON to bytes", ex);
         }
     }
-
 }
