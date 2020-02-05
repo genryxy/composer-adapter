@@ -24,9 +24,11 @@
 
 package com.artpie.composer;
 
+import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.google.common.io.ByteSource;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * PHP Composer packages registry.
@@ -60,8 +62,18 @@ public final class Packages {
      * Saves packages registry binary content to storage.
      *
      * @param storage Storage to use for saving.
+     * @return Completion of saving.
      */
-    public void save(final BlockingStorage storage) {
+    public CompletableFuture<Void> save(final Storage storage) {
+        return CompletableFuture.runAsync(() -> this.save(new BlockingStorage(storage)));
+    }
+
+    /**
+     * Saves packages registry binary content to storage.
+     *
+     * @param storage Storage to use for saving.
+     */
+    private void save(final BlockingStorage storage) {
         final byte[] bytes;
         try {
             bytes = this.content.read();

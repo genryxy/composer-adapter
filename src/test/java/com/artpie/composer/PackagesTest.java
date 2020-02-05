@@ -25,10 +25,13 @@
 package com.artpie.composer;
 
 import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.fs.FileStorage;
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 import java.nio.file.Files;
+import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,12 +47,12 @@ class PackagesTest {
     /**
      * Storage used in tests.
      */
-    private BlockingStorage storage;
+    private Storage storage;
 
     /**
      * Resource 'packages.json'.
      */
-    private Resource resource;
+    private ResourceOf resource;
 
     /**
      * Example packages registry read from 'packages.json'.
@@ -58,25 +61,23 @@ class PackagesTest {
 
     @BeforeEach
     void init() throws Exception {
-        this.storage = new BlockingStorage(
-            new FileStorage(
-                Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
-            )
+        this.storage = new FileStorage(
+            Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
         );
-        this.resource = new Resource("packages.json");
+        this.resource = new ResourceOf("packages.json");
         this.packages = new Packages(
             new Name("vendor/package"),
-            ByteSource.wrap(this.resource.bytes())
+            ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
         );
     }
 
     @Test
-    void shouldSave() {
-        this.packages.save(this.storage);
+    void shouldSave() throws Exception {
+        this.packages.save(this.storage).get();
         final Key.From key = new Key.From("vendor", "package.json");
         MatcherAssert.assertThat(
-            this.storage.value(key),
-            Matchers.equalTo(this.resource.bytes())
+            new BlockingStorage(this.storage).value(key),
+            Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
         );
     }
 }
