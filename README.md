@@ -6,7 +6,7 @@
 
 [![Build Status](https://img.shields.io/travis/artipie/composer-adapter/master.svg)](https://travis-ci.org/artipie/composer-adapter)
 [![Javadoc](http://www.javadoc.io/badge/com.artipie/composer-adapter.svg)](http://www.javadoc.io/doc/com.artipie/composer-adapter)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/artipie/composer-adapter/blob/master/LICENSE.txt)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/artipie/composer-adapter/blob/master/LICENSE)
 [![Hits-of-Code](https://hitsofcode.com/github/artipie/composer-adapter)](https://hitsofcode.com/view/github/artipie/composer-adapter)
 [![Maven Central](https://img.shields.io/maven-central/v/com.artipie/composer-adapter.svg)](https://maven-badges.herokuapp.com/maven-central/com.artipie/composer-adapter)
 [![PDD status](http://www.0pdd.com/svg?name=artipie/composer-adapter)](http://www.0pdd.com/p?name=artipie/composer-adapter)
