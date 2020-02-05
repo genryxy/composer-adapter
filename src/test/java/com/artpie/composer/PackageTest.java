@@ -25,6 +25,8 @@
 package com.artpie.composer;
 
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
+import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,9 +45,9 @@ class PackageTest {
     private Package pack;
 
     @BeforeEach
-    void init() {
-        final Resource json = new Resource("minimal-package.json");
-        this.pack = new Package(ByteSource.wrap(json.bytes()));
+    void init() throws Exception {
+        final ResourceOf json = new ResourceOf("minimal-package.json");
+        this.pack = new Package(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
     }
 
     @Test
