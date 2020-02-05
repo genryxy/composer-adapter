@@ -40,7 +40,7 @@ SOFTWARE.
   <licenses>
     <license>
       <name>MIT</name>
-      <url>https://github.com/artipie/composer-adapter/blob/master/LICENSE</url>
+      <url>https://github.com/artipie/composer-adapter/blob/master/LICENSE.txt</url>
     </license>
   </licenses>
   <properties>
@@ -84,16 +84,6 @@ SOFTWARE.
   </distributionManagement>
   <dependencies>
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>28.2-jre</version>
-    </dependency>
-    <dependency>
-      <groupId>com.jcabi</groupId>
-      <artifactId>jcabi-log</artifactId>
-      <version>0.18.1</version>
-    </dependency>
-    <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>asto</artifactId>
       <version>0.11.1</version>
@@ -112,7 +102,7 @@ SOFTWARE.
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-library</artifactId>
+      <artifactId>hamcrest</artifactId>
       <version>2.1</version>
       <scope>test</scope>
     </dependency>
