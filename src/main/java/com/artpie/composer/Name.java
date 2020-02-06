@@ -57,6 +57,15 @@ public final class Name {
     }
 
     /**
+     * Generates name string value.
+     *
+     * @return Name string value.
+     */
+    public String string() {
+        return this.value;
+    }
+
+    /**
      * Extracts vendor part from name.
      *
      * @return Vendor part of name.

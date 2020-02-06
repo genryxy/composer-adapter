@@ -30,7 +30,12 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.fs.FileStorage;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.file.Files;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -50,34 +55,76 @@ class PackagesTest {
     private Storage storage;
 
     /**
-     * Resource 'packages.json'.
+     * Package created from 'minimal-package.json' resource.
      */
-    private ResourceOf resource;
-
-    /**
-     * Example packages registry read from 'packages.json'.
-     */
-    private Packages packages;
+    private Package pack;
 
     @BeforeEach
     void init() throws Exception {
         this.storage = new FileStorage(
             Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
         );
-        this.resource = new ResourceOf("packages.json");
-        this.packages = new Packages(
-            new Name("vendor/package"),
-            ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
+        this.pack = new Package(
+            ByteSource.wrap(
+                ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
+            )
         );
     }
 
     @Test
     void shouldSave() throws Exception {
-        this.packages.save(this.storage).get();
-        final Key.From key = new Key.From("vendor", "package.json");
+        final ResourceOf resource = new ResourceOf("packages.json");
+        new Packages(
+            this.pack.name(),
+            ByteSource.wrap(
+                ByteStreams.toByteArray(resource.stream())
+            )
+        ).save(this.storage).get();
         MatcherAssert.assertThat(
-            new BlockingStorage(this.storage).value(key),
-            Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
+            new BlockingStorage(this.storage).value(new Key.From("vendor", "package.json")),
+            Matchers.equalTo(ByteStreams.toByteArray(resource.stream()))
         );
+    }
+
+    @Test
+    void shouldAddPackageWhenEmpty() throws Exception {
+        final JsonObject json = this.addPackageTo("{\"packages\":{}}");
+        MatcherAssert.assertThat(
+            this.versions(json).getJsonObject(this.pack.version()),
+            Matchers.notNullValue()
+        );
+    }
+
+    @Test
+    void shouldAddPackageWhenNotEmpty() throws Exception {
+        final JsonObject json = this.addPackageTo(
+            "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}"
+        );
+        final JsonObject versions = this.versions(json);
+        MatcherAssert.assertThat(
+            versions.getJsonObject("1.1.0"),
+            Matchers.notNullValue()
+        );
+        MatcherAssert.assertThat(
+            versions.getJsonObject(this.pack.version()),
+            Matchers.notNullValue()
+        );
+    }
+
+    private JsonObject addPackageTo(final String original) throws Exception {
+        new Packages(this.pack.name(), ByteSource.wrap(original.getBytes()))
+            .add(this.pack)
+            .save(this.storage)
+            .get();
+        final byte[] bytes = new BlockingStorage(this.storage).value(this.pack.name().key());
+        final JsonObject json;
+        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
+            json = reader.readObject();
+        }
+        return json;
+    }
+
+    private JsonObject versions(final JsonObject json) throws IOException {
+        return json.getJsonObject("packages").getJsonObject(this.pack.name().string());
     }
 }

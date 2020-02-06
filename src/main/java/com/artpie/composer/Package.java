@@ -73,6 +73,18 @@ public final class Package {
     }
 
     /**
+     * Reads package content as JSON object.
+     *
+     * @return Package JSON object.
+     * @throws IOException In case exception occurred on reading content.
+     */
+    public JsonObject json() throws IOException {
+        try (JsonReader reader = Json.createReader(this.content.openStream())) {
+            return reader.readObject();
+        }
+    }
+
+    /**
      * Reads string value from package JSON root. Throws exception if value not found.
      *
      * @param name Attribute value.
@@ -85,17 +97,5 @@ public final class Package {
             throw new IllegalStateException(String.format("Bad package, no '%s' found.", name));
         }
         return string.getString();
-    }
-
-    /**
-     * Reads package content as JSON object.
-     *
-     * @return Package JSON object.
-     * @throws IOException In case exception occurred on reading content.
-     */
-    private JsonObject json() throws IOException {
-        try (JsonReader reader = Json.createReader(this.content.openStream())) {
-            return reader.readObject();
-        }
     }
 }

@@ -27,8 +27,14 @@ package com.artpie.composer;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.google.common.io.ByteSource;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+import javax.json.JsonReader;
+import javax.json.JsonWriter;
 
 /**
  * PHP Composer packages registry.
@@ -36,6 +42,11 @@ import java.util.concurrent.CompletableFuture;
  * @since 0.1
  */
 public final class Packages {
+
+    /**
+     * Root attribute value for packages registry in JSON.
+     */
+    private static final String ATTRIBUTE = "packages";
 
     /**
      * Package name.
@@ -56,6 +67,37 @@ public final class Packages {
     public Packages(final Name name, final ByteSource content) {
         this.name = name;
         this.content = content;
+    }
+
+    /**
+     * Add package.
+     *
+     * @param pack Package.
+     * @return Updated packages.
+     * @throws IOException In case of any I/O problems.
+     */
+    public Packages add(final Package pack) throws IOException {
+        final JsonObject json = this.json();
+        final JsonObject packages = json.getJsonObject(Packages.ATTRIBUTE);
+        if (packages == null) {
+            throw new IllegalStateException("Bad content, no 'packages' object found");
+        }
+        final String pname = pack.name().string();
+        final JsonObjectBuilder builder;
+        final JsonObject versions = packages.getJsonObject(pname);
+        if (versions == null) {
+            builder = Json.createObjectBuilder();
+        } else {
+            builder = Json.createObjectBuilder(versions);
+        }
+        builder.add(pack.version(), pack.json());
+        final JsonObject result = Json.createObjectBuilder(json)
+            .add(
+                Packages.ATTRIBUTE,
+                Json.createObjectBuilder(packages).add(pname, builder)
+            )
+            .build();
+        return new Packages(this.name, bytes(result));
     }
 
     /**
@@ -82,4 +124,33 @@ public final class Packages {
         }
         storage.save(this.name.key(), bytes);
     }
+
+    /**
+     * Reads content as JSON object.
+     *
+     * @return JSON object.
+     * @throws IOException In case exception occurred on reading content.
+     */
+    private JsonObject json() throws IOException {
+        try (JsonReader reader = Json.createReader(this.content.openStream())) {
+            return reader.readObject();
+        }
+    }
+
+    /**
+     * Serializes JSON object into bytes.
+     *
+     * @param json JSON object.
+     * @return Serialized JSON object.
+     * @throws IOException In case of any I/O problems.
+     */
+    private static ByteSource bytes(final JsonObject json) throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+            JsonWriter writer = Json.createWriter(out)) {
+            writer.writeObject(json);
+            out.flush();
+            return ByteSource.wrap(out.toByteArray());
+        }
+    }
+
 }
