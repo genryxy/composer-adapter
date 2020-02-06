@@ -26,6 +26,7 @@ package com.artpie.composer;
 
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
+import java.io.IOException;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -51,7 +52,7 @@ class PackageTest {
     }
 
     @Test
-    void shouldExtractName() {
+    void shouldExtractName() throws IOException {
         MatcherAssert.assertThat(
             this.pack.name().key().string(),
             Matchers.is("vendor/package.json")
@@ -59,7 +60,7 @@ class PackageTest {
     }
 
     @Test
-    void shouldExtractVersion() {
+    void shouldExtractVersion() throws IOException {
         MatcherAssert.assertThat(
             this.pack.version(),
             Matchers.is("1.2.0")
