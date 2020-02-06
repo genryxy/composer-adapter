@@ -28,6 +28,8 @@ import com.google.common.io.ByteSource;
 import java.io.IOException;
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonString;
 
 /**
  * PHP Composer package.
@@ -54,30 +56,46 @@ public final class Package {
      * Extract name from package.
      *
      * @return Package name.
+     * @throws IOException In case exception occurred on reading content.
      */
-    public Name name() {
-        return new Name(this.json().getJsonString("name").getString());
+    public Name name() throws IOException {
+        return new Name(this.mandatoryString("name"));
     }
 
     /**
      * Extract version from package.
      *
      * @return Package version.
+     * @throws IOException In case exception occurred on reading content.
      */
-    public String version() {
-        return this.json().getJsonString("version").getString();
+    public String version() throws IOException {
+        return this.mandatoryString("version");
+    }
+
+    /**
+     * Reads string value from package JSON root. Throws exception if value not found.
+     *
+     * @param name Attribute value.
+     * @return String value.
+     * @throws IOException In case exception occurred on reading content.
+     */
+    private String mandatoryString(final String name) throws IOException {
+        final JsonString string = this.json().getJsonString(name);
+        if (string == null) {
+            throw new IllegalStateException(String.format("Bad package, no '%s' found.", name));
+        }
+        return string.getString();
     }
 
     /**
      * Reads package content as JSON object.
      *
      * @return Package JSON object.
+     * @throws IOException In case exception occurred on reading content.
      */
-    private JsonObject json() {
-        try {
-            return Json.createReader(this.content.openStream()).readObject();
-        } catch (final IOException ex) {
-            throw new IllegalStateException("Failed to parse content", ex);
+    private JsonObject json() throws IOException {
+        try (JsonReader reader = Json.createReader(this.content.openStream())) {
+            return reader.readObject();
         }
     }
 }
