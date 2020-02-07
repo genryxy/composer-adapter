@@ -91,13 +91,17 @@ public final class Packages {
             builder = Json.createObjectBuilder(versions);
         }
         builder.add(pack.version(), pack.json());
-        final JsonObject result = Json.createObjectBuilder(json)
-            .add(
-                Packages.ATTRIBUTE,
-                Json.createObjectBuilder(packages).add(pname, builder)
+        return new Packages(
+            this.name,
+            bytes(
+                Json.createObjectBuilder(json)
+                    .add(
+                        Packages.ATTRIBUTE,
+                        Json.createObjectBuilder(packages).add(pname, builder)
+                    )
+                    .build()
             )
-            .build();
-        return new Packages(this.name, bytes(result));
+        );
     }
 
     /**
