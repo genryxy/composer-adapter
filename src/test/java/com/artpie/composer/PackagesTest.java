@@ -54,26 +54,20 @@ class PackagesTest {
      */
     private ResourceOf resource;
 
-    /**
-     * Example packages registry read from 'packages.json'.
-     */
-    private Packages packages;
-
     @BeforeEach
     void init() throws Exception {
         this.storage = new FileStorage(
             Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
         );
         this.resource = new ResourceOf("packages.json");
-        this.packages = new Packages(
-            ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
-        );
     }
 
     @Test
     void shouldSave() throws Exception {
         final Key.From key = new Key.From("vendor", "package.json");
-        this.packages.save(this.storage, key).get();
+        new Packages(
+            ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
+        ).save(this.storage, key).get();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(key),
             Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
