@@ -24,36 +24,63 @@
 
 package com.artpie.composer;
 
+import com.google.common.io.ByteSource;
 import java.io.IOException;
+import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonString;
 
 /**
- * PHP Composer package.
+ * PHP Composer package built from JSON.
  *
  * @since 0.1
  */
-public interface Package {
-    /**
-     * Extract name from package.
-     *
-     * @return Package name.
-     * @throws IOException In case exception occurred on reading content.
-     */
-    Name name() throws IOException;
+public final class JsonPackage implements Package {
 
     /**
-     * Extract version from package.
-     *
-     * @return Package version.
-     * @throws IOException In case exception occurred on reading content.
+     * Package binary content.
      */
-    String version() throws IOException;
+    private final ByteSource content;
 
     /**
-     * Reads package content as JSON object.
+     * Ctor.
      *
-     * @return Package JSON object.
+     * @param content Package binary content.
+     */
+    public JsonPackage(final ByteSource content) {
+        this.content = content;
+    }
+
+    @Override
+    public Name name() throws IOException {
+        return new Name(this.mandatoryString("name"));
+    }
+
+    @Override
+    public String version() throws IOException {
+        return this.mandatoryString("version");
+    }
+
+    @Override
+    public JsonObject json() throws IOException {
+        try (JsonReader reader = Json.createReader(this.content.openStream())) {
+            return reader.readObject();
+        }
+    }
+
+    /**
+     * Reads string value from package JSON root. Throws exception if value not found.
+     *
+     * @param name Attribute value.
+     * @return String value.
      * @throws IOException In case exception occurred on reading content.
      */
-    JsonObject json() throws IOException;
+    private String mandatoryString(final String name) throws IOException {
+        final JsonString string = this.json().getJsonString(name);
+        if (string == null) {
+            throw new IllegalStateException(String.format("Bad package, no '%s' found.", name));
+        }
+        return string.getString();
+    }
 }

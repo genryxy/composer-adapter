@@ -33,21 +33,26 @@ import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.HashSet;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
+import org.hamcrest.core.IsEqual;
+import org.hamcrest.core.IsNot;
+import org.hamcrest.core.IsNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+// @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
- * Tests for {@link Packages}.
+ * Tests for {@link JsonPackages}.
  *
  * @since 0.1
  */
-class PackagesTest {
+class JsonPackagesTest {
 
     /**
      * Storage used in tests.
@@ -62,9 +67,9 @@ class PackagesTest {
     @BeforeEach
     void init() throws Exception {
         this.storage = new FileStorage(
-            Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
+            Files.createTempDirectory(JsonPackagesTest.class.getName()).resolve("repo")
         );
-        this.pack = new Package(
+        this.pack = new JsonPackage(
             ByteSource.wrap(
                 ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
             )
@@ -74,7 +79,7 @@ class PackagesTest {
     @Test
     void shouldSave() throws Exception {
         final ResourceOf resource = new ResourceOf("packages.json");
-        new Packages(
+        new JsonPackages(
             this.pack.name(),
             ByteSource.wrap(
                 ByteStreams.toByteArray(resource.stream())
@@ -82,7 +87,7 @@ class PackagesTest {
         ).save(this.storage).get();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(new Key.From("vendor", "package.json")),
-            Matchers.equalTo(ByteStreams.toByteArray(resource.stream()))
+            new IsEqual<>(ByteStreams.toByteArray(resource.stream()))
         );
     }
 
@@ -91,7 +96,7 @@ class PackagesTest {
         final JsonObject json = this.addPackageTo("{\"packages\":{}}");
         MatcherAssert.assertThat(
             this.versions(json).getJsonObject(this.pack.version()),
-            Matchers.notNullValue()
+            new IsNot<>(new IsNull<>())
         );
     }
 
@@ -102,17 +107,13 @@ class PackagesTest {
         );
         final JsonObject versions = this.versions(json);
         MatcherAssert.assertThat(
-            versions.getJsonObject("1.1.0"),
-            Matchers.notNullValue()
-        );
-        MatcherAssert.assertThat(
-            versions.getJsonObject(this.pack.version()),
-            Matchers.notNullValue()
+            versions.keySet(),
+            new IsEqual<>(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
         );
     }
 
     private JsonObject addPackageTo(final String original) throws Exception {
-        new Packages(this.pack.name(), ByteSource.wrap(original.getBytes()))
+        new JsonPackages(this.pack.name(), ByteSource.wrap(original.getBytes()))
             .add(this.pack)
             .save(this.storage)
             .get();

@@ -34,11 +34,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link Package}.
+ * Tests for {@link JsonPackage}.
  *
  * @since 0.1
  */
-class PackageTest {
+class JsonPackageTest {
 
     /**
      * Example package read from 'minimal-package.json'.
@@ -48,7 +48,7 @@ class PackageTest {
     @BeforeEach
     void init() throws Exception {
         final ResourceOf json = new ResourceOf("minimal-package.json");
-        this.pack = new Package(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
+        this.pack = new JsonPackage(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
     }
 
     @Test
