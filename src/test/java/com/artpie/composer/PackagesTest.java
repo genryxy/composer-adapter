@@ -45,6 +45,12 @@ import org.junit.jupiter.api.io.TempDir;
 class PackagesTest {
 
     /**
+     * Path to temporary directory used as file storage in tests.
+     */
+    @TempDir
+    private Path temp;
+
+    /**
      * Resource 'packages.json'.
      */
     private ResourceOf resource;
@@ -64,8 +70,8 @@ class PackagesTest {
     }
 
     @Test
-    void shouldSave(final @TempDir Path temp) throws Exception {
-        final FileStorage storage = new FileStorage(temp);
+    void shouldSave() throws Exception {
+        final FileStorage storage = new FileStorage(this.temp);
         this.packages.save(storage).get();
         final Key.From key = new Key.From("vendor", "package.json");
         MatcherAssert.assertThat(
