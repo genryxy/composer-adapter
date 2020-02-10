@@ -25,17 +25,17 @@
 package com.artpie.composer;
 
 import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.fs.FileStorage;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
-import java.nio.file.Files;
+import java.nio.file.Path;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for {@link Packages}.
@@ -43,11 +43,6 @@ import org.junit.jupiter.api.Test;
  * @since 0.1
  */
 class PackagesTest {
-
-    /**
-     * Storage used in tests.
-     */
-    private Storage storage;
 
     /**
      * Resource 'packages.json'.
@@ -61,9 +56,6 @@ class PackagesTest {
 
     @BeforeEach
     void init() throws Exception {
-        this.storage = new FileStorage(
-            Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
-        );
         this.resource = new ResourceOf("packages.json");
         this.packages = new Packages(
             new Name("vendor/package"),
@@ -72,11 +64,12 @@ class PackagesTest {
     }
 
     @Test
-    void shouldSave() throws Exception {
-        this.packages.save(this.storage).get();
+    void shouldSave(final @TempDir Path temp) throws Exception {
+        final FileStorage storage = new FileStorage(temp);
+        this.packages.save(storage).get();
         final Key.From key = new Key.From("vendor", "package.json");
         MatcherAssert.assertThat(
-            new BlockingStorage(this.storage).value(key),
+            new BlockingStorage(storage).value(key),
             Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
         );
     }
