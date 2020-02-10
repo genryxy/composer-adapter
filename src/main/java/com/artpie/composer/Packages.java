@@ -24,6 +24,7 @@
 
 package com.artpie.composer;
 
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.google.common.io.ByteSource;
@@ -38,11 +39,6 @@ import java.util.concurrent.CompletableFuture;
 public final class Packages {
 
     /**
-     * Package name.
-     */
-    private final Name name;
-
-    /**
      * Packages registry content.
      */
     private final ByteSource content;
@@ -50,11 +46,9 @@ public final class Packages {
     /**
      * Ctor.
      *
-     * @param name Package name.
      * @param content Packages registry content.
      */
-    public Packages(final Name name, final ByteSource content) {
-        this.name = name;
+    public Packages(final ByteSource content) {
         this.content = content;
     }
 
@@ -62,24 +56,26 @@ public final class Packages {
      * Saves packages registry binary content to storage.
      *
      * @param storage Storage to use for saving.
+     * @param key Key to store packages.
      * @return Completion of saving.
      */
-    public CompletableFuture<Void> save(final Storage storage) {
-        return CompletableFuture.runAsync(() -> this.save(new BlockingStorage(storage)));
+    public CompletableFuture<Void> save(final Storage storage, final Key key) {
+        return CompletableFuture.runAsync(() -> this.save(new BlockingStorage(storage), key));
     }
 
     /**
      * Saves packages registry binary content to storage.
      *
      * @param storage Storage to use for saving.
+     * @param key Key to store packages.
      */
-    private void save(final BlockingStorage storage) {
+    private void save(final BlockingStorage storage, final Key key) {
         final byte[] bytes;
         try {
             bytes = this.content.read();
         } catch (final IOException ex) {
             throw new IllegalStateException("Failed to read content", ex);
         }
-        storage.save(this.name.key(), bytes);
+        storage.save(key, bytes);
     }
 }

@@ -66,15 +66,14 @@ class PackagesTest {
         );
         this.resource = new ResourceOf("packages.json");
         this.packages = new Packages(
-            new Name("vendor/package"),
             ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
         );
     }
 
     @Test
     void shouldSave() throws Exception {
-        this.packages.save(this.storage).get();
         final Key.From key = new Key.From("vendor", "package.json");
+        this.packages.save(this.storage, key).get();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(key),
             Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
