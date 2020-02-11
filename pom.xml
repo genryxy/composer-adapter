@@ -25,11 +25,10 @@ SOFTWARE.
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.jcabi</groupId>
-    <artifactId>parent</artifactId>
-    <version>0.49.5</version>
+    <groupId>com.artipie</groupId>
+    <artifactId>ppom</artifactId>
+    <version>0.2.1</version>
   </parent>
-  <groupId>com.artipie</groupId>
   <artifactId>composer-adapter</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
@@ -43,12 +42,6 @@ SOFTWARE.
       <url>https://github.com/artipie/composer-adapter/blob/master/LICENSE.txt</url>
     </license>
   </licenses>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <junit-platform.version>5.4.1</junit-platform.version>
-  </properties>
   <developers>
     <developer>
       <id>1</id>
@@ -86,52 +79,38 @@ SOFTWARE.
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>28.2-jre</version>
     </dependency>
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>asto</artifactId>
-      <version>0.11.1</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
       <artifactId>javax.json-api</artifactId>
-      <version>1.1.4</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>
-      <version>${junit-platform.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
-      <version>${junit-platform.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest</artifactId>
-      <version>2.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>1.7.21</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>
       <artifactId>javax.json</artifactId>
-      <version>1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.cactoos</groupId>
       <artifactId>cactoos</artifactId>
-      <version>0.43</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -148,26 +127,7 @@ SOFTWARE.
     </testResources>
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <systemPropertyVariables>
-            <testDirectory>${project.build.directory}/tests</testDirectory>
-          </systemPropertyVariables>
-        </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-        </configuration>
-      </plugin>
-      <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
-        <configuration>
-          <parallel>none</parallel>
-        </configuration>
         <executions>
           <execution>
             <goals>
@@ -176,6 +136,10 @@ SOFTWARE.
             </goals>
           </execution>
         </executions>
+        <configuration>
+          <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
       </plugin>
     </plugins>
   </build>
