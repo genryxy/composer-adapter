@@ -56,12 +56,6 @@ import org.junit.jupiter.api.io.TempDir;
 class JsonPackagesTest {
 
     /**
-     * Path to temporary directory used as file storage in tests.
-     */
-    @TempDir
-    private Path temp;
-
-    /**
      * Storage used in tests.
      */
     private Storage storage;
@@ -72,8 +66,8 @@ class JsonPackagesTest {
     private Package pack;
 
     @BeforeEach
-    void init() throws Exception {
-        this.storage = new FileStorage(this.temp);
+    void init(final @TempDir Path temp) throws Exception {
+        this.storage = new FileStorage(temp);
         this.pack = new JsonPackage(
             ByteSource.wrap(
                 ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())

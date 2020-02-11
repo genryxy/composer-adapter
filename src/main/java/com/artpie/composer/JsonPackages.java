@@ -72,7 +72,7 @@ public final class JsonPackages implements Packages {
         final JsonObject packages = json.getJsonObject(JsonPackages.ATTRIBUTE);
         final String pname = pack.name().string();
         final JsonObjectBuilder builder;
-        if (packages.isNull(pname)) {
+        if (packages.isEmpty() || packages.isNull(pname)) {
             builder = Json.createObjectBuilder();
         } else {
             builder = Json.createObjectBuilder(packages.getJsonObject(pname));
