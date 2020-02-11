@@ -32,7 +32,7 @@ import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
 import javax.json.Json;
@@ -45,6 +45,7 @@ import org.hamcrest.core.IsNot;
 import org.hamcrest.core.IsNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 // @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
@@ -53,6 +54,12 @@ import org.junit.jupiter.api.Test;
  * @since 0.1
  */
 class JsonPackagesTest {
+
+    /**
+     * Path to temporary directory used as file storage in tests.
+     */
+    @TempDir
+    private Path temp;
 
     /**
      * Storage used in tests.
@@ -66,9 +73,7 @@ class JsonPackagesTest {
 
     @BeforeEach
     void init() throws Exception {
-        this.storage = new FileStorage(
-            Files.createTempDirectory(JsonPackagesTest.class.getName()).resolve("repo")
-        );
+        this.storage = new FileStorage(this.temp);
         this.pack = new JsonPackage(
             ByteSource.wrap(
                 ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
