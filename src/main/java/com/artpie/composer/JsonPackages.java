@@ -56,15 +56,6 @@ public final class JsonPackages implements Packages {
 
     /**
      * Ctor.
-     *
-     * @param content Packages registry content.
-     */
-    public JsonPackages(final ByteSource content) {
-        this.content = content;
-    }
-
-    /**
-     * Ctor.
      */
     public JsonPackages() {
         this(
@@ -74,6 +65,15 @@ public final class JsonPackages implements Packages {
                     .build()
             )
         );
+    }
+
+    /**
+     * Ctor.
+     *
+     * @param content Packages registry content.
+     */
+    public JsonPackages(final ByteSource content) {
+        this.content = content;
     }
 
     @Override
@@ -151,7 +151,7 @@ public final class JsonPackages implements Packages {
                 return ByteSource.wrap(out.toByteArray());
             }
         } catch (final IOException ex) {
-            throw new IllegalArgumentException("Failed to serialize JSON to bytes", ex);
+            throw new IllegalStateException("Failed to serialize JSON to bytes", ex);
         }
     }
 }

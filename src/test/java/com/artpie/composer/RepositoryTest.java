@@ -39,7 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Tests for {@link RepositoryTest}.
+ * Tests for {@link Repository}.
  *
  * @since 0.1
  */
