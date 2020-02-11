@@ -84,14 +84,14 @@ class JsonPackagesTest {
     @Test
     void shouldSave() throws Exception {
         final ResourceOf resource = new ResourceOf("packages.json");
+        final Key key = this.pack.name().key();
         new JsonPackages(
-            this.pack.name(),
             ByteSource.wrap(
                 ByteStreams.toByteArray(resource.stream())
             )
-        ).save(this.storage).get();
+        ).save(this.storage, key).get();
         MatcherAssert.assertThat(
-            new BlockingStorage(this.storage).value(new Key.From("vendor", "package.json")),
+            new BlockingStorage(this.storage).value(key),
             new IsEqual<>(ByteStreams.toByteArray(resource.stream()))
         );
     }
@@ -118,11 +118,12 @@ class JsonPackagesTest {
     }
 
     private JsonObject addPackageTo(final String original) throws Exception {
-        new JsonPackages(this.pack.name(), ByteSource.wrap(original.getBytes()))
+        final Key key = this.pack.name().key();
+        new JsonPackages(ByteSource.wrap(original.getBytes()))
             .add(this.pack)
-            .save(this.storage)
+            .save(this.storage, key)
             .get();
-        final byte[] bytes = new BlockingStorage(this.storage).value(this.pack.name().key());
+        final byte[] bytes = new BlockingStorage(this.storage).value(key);
         final JsonObject json;
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
             json = reader.readObject();

@@ -24,6 +24,7 @@
 
 package com.artpie.composer;
 
+import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -47,7 +48,8 @@ public interface Packages {
      * Saves packages registry binary content to storage.
      *
      * @param storage Storage to use for saving.
+     * @param key Key to store packages.
      * @return Completion of saving.
      */
-    CompletableFuture<Void> save(Storage storage);
+    CompletableFuture<Void> save(Storage storage, Key key);
 }
