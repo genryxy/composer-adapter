@@ -40,6 +40,7 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
 import org.hamcrest.core.IsNot;
 import org.hamcrest.core.IsNull;
@@ -76,7 +77,14 @@ class JsonPackagesTest {
     }
 
     @Test
-    void shouldSave() throws Exception {
+    void shouldSaveEmpty() throws Exception {
+        final Name name = this.pack.name();
+        new JsonPackages().save(this.storage, name.key()).get();
+        MatcherAssert.assertThat(this.versions(this.json(name.key())), Matchers.nullValue());
+    }
+
+    @Test
+    void shouldSaveNotEmpty() throws Exception {
         final ResourceOf resource = new ResourceOf("packages.json");
         final Key key = this.pack.name().key();
         new JsonPackages(
@@ -117,12 +125,14 @@ class JsonPackagesTest {
             .add(this.pack)
             .save(this.storage, key)
             .get();
+        return this.json(this.pack.name().key());
+    }
+
+    private JsonObject json(final Key key) {
         final byte[] bytes = new BlockingStorage(this.storage).value(key);
-        final JsonObject json;
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
-            json = reader.readObject();
+            return reader.readObject();
         }
-        return json;
     }
 
     private JsonObject versions(final JsonObject json) throws IOException {
