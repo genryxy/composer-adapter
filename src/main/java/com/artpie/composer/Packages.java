@@ -26,8 +26,6 @@ package com.artpie.composer;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
-import com.google.common.io.ByteSource;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,21 +34,15 @@ import java.util.concurrent.CompletableFuture;
  *
  * @since 0.1
  */
-public final class Packages {
-
+public interface Packages {
     /**
-     * Packages registry content.
-     */
-    private final ByteSource content;
-
-    /**
-     * Ctor.
+     * Add package.
      *
-     * @param content Packages registry content.
+     * @param pack Package.
+     * @return Updated packages.
+     * @throws IOException In case of any I/O problems.
      */
-    public Packages(final ByteSource content) {
-        this.content = content;
-    }
+    Packages add(Package pack) throws IOException;
 
     /**
      * Saves packages registry binary content to storage.
@@ -59,23 +51,5 @@ public final class Packages {
      * @param key Key to store packages.
      * @return Completion of saving.
      */
-    public CompletableFuture<Void> save(final Storage storage, final Key key) {
-        return CompletableFuture.runAsync(() -> this.save(new BlockingStorage(storage), key));
-    }
-
-    /**
-     * Saves packages registry binary content to storage.
-     *
-     * @param storage Storage to use for saving.
-     * @param key Key to store packages.
-     */
-    private void save(final BlockingStorage storage, final Key key) {
-        final byte[] bytes;
-        try {
-            bytes = this.content.read();
-        } catch (final IOException ex) {
-            throw new IllegalStateException("Failed to read content", ex);
-        }
-        storage.save(key, bytes);
-    }
+    CompletableFuture<Void> save(Storage storage, Key key);
 }

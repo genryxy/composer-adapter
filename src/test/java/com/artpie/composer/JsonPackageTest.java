@@ -24,13 +24,9 @@
 
 package com.artpie.composer;
 
-import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.fs.FileStorage;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
-import java.nio.file.Files;
+import java.io.IOException;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -38,39 +34,36 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link Packages}.
+ * Tests for {@link JsonPackage}.
  *
  * @since 0.1
  */
-class PackagesTest {
+class JsonPackageTest {
 
     /**
-     * Storage used in tests.
+     * Example package read from 'minimal-package.json'.
      */
-    private Storage storage;
-
-    /**
-     * Resource 'packages.json'.
-     */
-    private ResourceOf resource;
+    private Package pack;
 
     @BeforeEach
     void init() throws Exception {
-        this.storage = new FileStorage(
-            Files.createTempDirectory(PackagesTest.class.getName()).resolve("repo")
-        );
-        this.resource = new ResourceOf("packages.json");
+        final ResourceOf json = new ResourceOf("minimal-package.json");
+        this.pack = new JsonPackage(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
     }
 
     @Test
-    void shouldSave() throws Exception {
-        final Key.From key = new Key.From("vendor", "package.json");
-        new Packages(
-            ByteSource.wrap(ByteStreams.toByteArray(this.resource.stream()))
-        ).save(this.storage, key).get();
+    void shouldExtractName() throws IOException {
         MatcherAssert.assertThat(
-            new BlockingStorage(this.storage).value(key),
-            Matchers.equalTo(ByteStreams.toByteArray(this.resource.stream()))
+            this.pack.name().key().string(),
+            Matchers.is("vendor/package.json")
+        );
+    }
+
+    @Test
+    void shouldExtractVersion() throws IOException {
+        MatcherAssert.assertThat(
+            this.pack.version(),
+            Matchers.is("1.2.0")
         );
     }
 }
