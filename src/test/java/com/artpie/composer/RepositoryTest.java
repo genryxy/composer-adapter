@@ -43,7 +43,8 @@ import javax.json.JsonReader;
 import javax.json.JsonWriter;
 import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
+import org.hamcrest.collection.IsEmptyCollection;
+import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -81,7 +82,11 @@ class RepositoryTest {
         final Name name = new Name("foo/bar");
         final Packages packages = new Repository(this.storage).packages(name);
         packages.save(this.storage, name.key()).get();
-        MatcherAssert.assertThat(this.packages(name).keySet(), Matchers.empty());
+        MatcherAssert.assertThat(
+            "Packages loaded when no content is in storage should be empty",
+            this.packages(name).keySet(),
+            new IsEmptyCollection<>()
+        );
     }
 
     @Test
@@ -92,8 +97,9 @@ class RepositoryTest {
         final Packages packages = new Repository(this.storage).packages(name);
         packages.save(this.storage, name.key()).get();
         MatcherAssert.assertThat(
+            "Packages loaded and saved should preserve content without modification",
             new BlockingStorage(this.storage).value(name.key()),
-            Matchers.equalTo(bytes)
+            new IsEqual<>(bytes)
         );
     }
 
@@ -103,8 +109,9 @@ class RepositoryTest {
         new Repository(this.storage).add(key).get();
         final Name name = this.pack.name();
         MatcherAssert.assertThat(
+            "Package with correct version should present in packages after being added",
             this.packages(name).getJsonObject(name.string()).keySet(),
-            Matchers.equalTo(Collections.singleton(this.pack.version()))
+            new IsEqual<>(Collections.singleton(this.pack.version()))
         );
     }
 
@@ -118,8 +125,10 @@ class RepositoryTest {
         final Key.From key = this.savePackage();
         new Repository(this.storage).add(key).get();
         MatcherAssert.assertThat(
+            // @checkstyle LineLengthCheck (1 line)
+            "Package with both new and old versions should present in packages after adding new version",
             this.packages(name).getJsonObject(name.string()).keySet(),
-            Matchers.equalTo(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
+            new IsEqual<>(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
         );
     }
 
