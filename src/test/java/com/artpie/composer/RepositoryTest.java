@@ -34,7 +34,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -110,7 +109,7 @@ class RepositoryTest {
         MatcherAssert.assertThat(
             "Package with correct version should present in packages after being added",
             this.packages(name).getJsonObject(name.string()).keySet(),
-            new IsEqual<>(Collections.singleton(this.pack.version()))
+            new IsEqual<>(new SetOf<>(this.pack.version()))
         );
     }
 
