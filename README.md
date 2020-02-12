@@ -27,6 +27,8 @@ Some valuable references:
   * [Packagist Private API](https://packagist.com/docs/api)
   * [Composer GitHub](https://github.com/composer)
 
+## Getting started
+
 This is the dependency you need:
 
 ```xml
@@ -35,6 +37,23 @@ This is the dependency you need:
   <artifactId>composer-adapter</artifactId>
   <version>[...]</version>
 </dependency>
+```
+
+Save PHP Composer package JSON file like `composer.json` (particular name does not matter)
+to [ASTO](https://github.com/artipie/asto) storage. 
+Then, make an instance of `Repository` class with storage as an argument.
+Finally, instruct `Repository` to add the package to repository:
+
+```java
+import com.artpie.composer;
+Repository repo = new Repository(storage);
+repo.add(new Key.From("composer.json"));
+```
+
+After that package metadata could be accessed by it's name:
+
+```java
+Packages packages = repo.packages(new Name("vendor/package"));
 ```
 
 Read the [Javadoc](http://www.javadoc.io/doc/com.artipie/composer-adapter)
