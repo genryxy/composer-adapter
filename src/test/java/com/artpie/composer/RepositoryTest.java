@@ -34,14 +34,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonWriter;
 import org.cactoos.io.ResourceOf;
+import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.core.IsEqual;
@@ -128,7 +127,7 @@ class RepositoryTest {
             // @checkstyle LineLengthCheck (1 line)
             "Package with both new and old versions should present in packages after adding new version",
             this.packages(name).getJsonObject(name.string()).keySet(),
-            new IsEqual<>(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
+            new IsEqual<>(new SetOf<>("1.1.0", this.pack.version()))
         );
     }
 
