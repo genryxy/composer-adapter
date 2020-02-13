@@ -28,6 +28,8 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.google.common.io.ByteSource;
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Class representing PHP Composer repository.
@@ -67,5 +69,21 @@ public class Repository {
             packages = new JsonPackages();
         }
         return packages;
+    }
+
+    /**
+     * Adds package described in JSON format from storage.
+     *
+     * @param key Key to find content of package JSON.
+     * @return Completion of adding package to repository.
+     * @throws IOException In case exception occurred on operations with storage.
+     */
+    public CompletableFuture<Void> add(final Key key) throws IOException {
+        final ByteSource content = ByteSource.wrap(new BlockingStorage(this.storage).value(key));
+        final Package pack = new JsonPackage(content);
+        final Name name = pack.name();
+        return this.packages(name)
+            .add(pack)
+            .save(this.storage, name.key());
     }
 }
