@@ -40,12 +40,22 @@ This is the dependency you need:
 ```
 
 Save PHP Composer package JSON file like `composer.json` (particular name does not matter)
-to [ASTO](https://github.com/artipie/asto) storage. 
+to [ASTO](https://github.com/artipie/asto) storage.
+
+```java
+import com.artpie.asto.*;
+Storage storage = new FileStorage(Path.of("/path/to/storage"));
+storage.save(
+    new Key.From("composer.json"), 
+    Files.readAllBytes(Path.of("/my/files/composer.json"))
+);
+```
+
 Then, make an instance of `Repository` class with storage as an argument.
 Finally, instruct `Repository` to add the package to repository:
 
 ```java
-import com.artpie.composer;
+import com.artpie.composer.*;
 Repository repo = new Repository(storage);
 repo.add(new Key.From("composer.json"));
 ```
