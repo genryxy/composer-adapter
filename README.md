@@ -69,6 +69,13 @@ Packages packages = repo.packages(new Name("vendor/package"));
 Read the [Javadoc](http://www.javadoc.io/doc/com.artipie/composer-adapter)
 for more technical details.
 
+## Project status
+
+- [x] Adding package to repository [#1](https://github.com/artipie/composer-adapter/issues/1)
+- [ ] HTTP support for adding package as `composer.json` [#22](https://github.com/artipie/composer-adapter/issues/22)
+- [ ] HTTP support for getting package metadata [#24](https://github.com/artipie/composer-adapter/issues/24)
+- [ ] HTTP support for adding package as ZIP archive [#23](https://github.com/artipie/composer-adapter/issues/23)
+
 ## How to contribute
 
 Fork repository, make changes, send us a pull request. We will review
