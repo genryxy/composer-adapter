@@ -29,6 +29,7 @@ import com.artipie.http.Response;
  * Package metadata resource.
  *
  * @since 0.1
+ * @todo #19 add implementation for get() method
  */
 public final class PackageMetadata implements Resource {
     @Override

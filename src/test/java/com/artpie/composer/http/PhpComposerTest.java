@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
  * Tests for {@link PhpComposer}.
  *
  * @since 0.1
+ * @todo #19 add tests for getting package metadata content (200 + content if present, 404 if not)
  */
 class PhpComposerTest {
 
