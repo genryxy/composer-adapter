@@ -24,24 +24,22 @@
 package com.artpie.composer.http;
 
 import com.artipie.http.Response;
+import com.artipie.http.rs.RsWithStatus;
+import java.net.HttpURLConnection;
 
 /**
- * Resource serving HTTP requests.
+ * Root resource. Used as endpoint to add a package.
  *
  * @since 0.1
  */
-public interface Resource {
-    /**
-     * Serve GET method.
-     *
-     * @return Response to request.
-     */
-    Response get();
+public final class Root implements Resource {
+    @Override
+    public Response get() {
+        return new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
+    }
 
-    /**
-     * Serve PUT method.
-     *
-     * @return Response to request.
-     */
-    Response put();
+    @Override
+    public Response put() {
+        throw new UnsupportedOperationException();
+    }
 }

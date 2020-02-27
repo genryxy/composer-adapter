@@ -47,7 +47,7 @@ class PhpComposerTest {
 
     @BeforeEach
     void init() {
-        this.php = new PhpComposer("/base/");
+        this.php = new PhpComposer("/base");
     }
 
     @Test
@@ -76,5 +76,25 @@ class PhpComposerTest {
             response,
             new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD)
         );
+    }
+
+    @Test
+    void shouldFailGetRootFromNotBasePath() {
+        final Response response = this.php.response(
+            "GET /not-base",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(response, new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND));
+    }
+
+    @Test
+    void shouldFailGetRoot() {
+        final Response response = this.php.response(
+            "GET /base",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(response, new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD));
     }
 }

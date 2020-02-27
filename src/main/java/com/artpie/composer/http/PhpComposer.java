@@ -63,9 +63,13 @@ public final class PhpComposer implements Slice {
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
         if (path.startsWith(this.base)) {
-            final Resource resource = new PackageMetadata();
-            if (request.method().equals("GET")) {
+            final String relative = path.substring(this.base.length());
+            final Resource resource = PhpComposer.resource(relative);
+            final String method = request.method();
+            if (method.equals("GET")) {
                 response = resource.get();
+            } else if (method.equals("PUT")) {
+                response = resource.put();
             } else {
                 response = new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
             }
@@ -73,5 +77,21 @@ public final class PhpComposer implements Slice {
             response = new RsWithStatus(HttpURLConnection.HTTP_NOT_FOUND);
         }
         return response;
+    }
+
+    /**
+     * Find resource by relative path.
+     *
+     * @param path Relative path.
+     * @return Resource found by path.
+     */
+    private static Resource resource(final String path) {
+        final Resource resource;
+        if (path.isEmpty()) {
+            resource = new Root();
+        } else {
+            resource = new PackageMetadata();
+        }
+        return resource;
     }
 }

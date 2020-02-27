@@ -24,6 +24,8 @@
 package com.artpie.composer.http;
 
 import com.artipie.http.Response;
+import com.artipie.http.rs.RsWithStatus;
+import java.net.HttpURLConnection;
 
 /**
  * Package metadata resource.
@@ -35,5 +37,10 @@ public final class PackageMetadata implements Resource {
     @Override
     public Response get() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Response put() {
+        return new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
     }
 }
