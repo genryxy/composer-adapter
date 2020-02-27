@@ -23,22 +23,34 @@
  */
 package com.artpie.composer.http;
 
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
+import com.artipie.asto.blocking.BlockingStorage;
+import com.artipie.asto.fs.FileStorage;
 import com.artipie.http.Response;
+import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
 import io.reactivex.Flowable;
 import java.net.HttpURLConnection;
+import java.nio.file.Path;
 import java.util.Collections;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for {@link PhpComposer}.
  *
  * @since 0.1
- * @todo #19 add tests for getting package metadata content (200 + content if present, 404 if not)
  */
 class PhpComposerTest {
+
+    /**
+     * Storage used in tests.
+     */
+    private Storage storage;
 
     /**
      * Tested PhpComposer slice.
@@ -46,8 +58,30 @@ class PhpComposerTest {
     private PhpComposer php;
 
     @BeforeEach
-    void init() {
-        this.php = new PhpComposer("/base/");
+    void init(final @TempDir Path temp) {
+        this.storage = new FileStorage(temp);
+        this.php = new PhpComposer("/base", this.storage);
+    }
+
+    @Test
+    void shouldGetPackageContent() {
+        final byte[] data = "data".getBytes();
+        new BlockingStorage(this.storage).save(
+            new Key.From("vendor", "package.json"),
+            data
+        );
+        final Response response = this.php.response(
+            "GET /base/p/vendor/package.json",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
+            response,
+            Matchers.allOf(
+                new RsHasStatus(HttpURLConnection.HTTP_OK),
+                new RsHasBody(data)
+            )
+        );
     }
 
     @Test
@@ -59,6 +93,19 @@ class PhpComposerTest {
         );
         MatcherAssert.assertThat(
             "Resources from outside of base path should not be found",
+            response,
+            new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND)
+        );
+    }
+
+    @Test
+    void shouldFailGetPackageMetadataWhenNotExists() {
+        final Response response = this.php.response(
+            "GET /base/p/vendor/unknown-package.json",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
             response,
             new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND)
         );
