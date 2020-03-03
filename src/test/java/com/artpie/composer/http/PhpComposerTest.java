@@ -85,7 +85,11 @@ class PhpComposerTest {
             Collections.emptyList(),
             Flowable.empty()
         );
-        MatcherAssert.assertThat(response, new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND));
+        MatcherAssert.assertThat(
+            "Root resource from outside of base path should not be found",
+            response,
+            new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND)
+        );
     }
 
     @Test
@@ -95,6 +99,10 @@ class PhpComposerTest {
             Collections.emptyList(),
             Flowable.empty()
         );
-        MatcherAssert.assertThat(response, new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD));
+        MatcherAssert.assertThat(
+            "It should not be possible to get root resource",
+            response,
+            new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD)
+        );
     }
 }

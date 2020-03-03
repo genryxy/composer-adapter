@@ -63,8 +63,7 @@ public final class PhpComposer implements Slice {
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
         if (path.startsWith(this.base)) {
-            final String relative = path.substring(this.base.length());
-            final Resource resource = PhpComposer.resource(relative);
+            final Resource resource = PhpComposer.resource(path.substring(this.base.length()));
             final String method = request.method();
             if (method.equals("GET")) {
                 response = resource.get();
