@@ -126,8 +126,8 @@ public final class PackageMetadata implements Resource {
                 String.format("Unexpected path: %s", this.path)
             );
         }
-        final String vendor = matcher.group("vendor");
-        final String pack = matcher.group("package");
-        return new Name(String.format("%s/%s", vendor, pack)).key();
+        return new Name(
+            String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
+        ).key();
     }
 }

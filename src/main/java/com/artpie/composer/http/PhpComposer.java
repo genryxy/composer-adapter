@@ -71,10 +71,11 @@ public final class PhpComposer implements Slice {
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
         if (path.startsWith(this.base)) {
-            final String relative = path.substring(this.base.length());
-            final Resource resource = new PackageMetadata(relative, this.storage);
             if (request.method().equals("GET")) {
-                response = resource.get();
+                response = new PackageMetadata(
+                    path.substring(this.base.length()),
+                    this.storage
+                ).get();
             } else {
                 response = new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
             }
