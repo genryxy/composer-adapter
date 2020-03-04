@@ -32,18 +32,19 @@ import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
 import io.reactivex.Flowable;
 import java.net.HttpURLConnection;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for {@link PhpComposer}.
- *
  * @since 0.1
  */
 class PhpComposerTest {
@@ -127,6 +128,20 @@ class PhpComposerTest {
             "Package metadata cannot be put",
             response,
             new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD)
+        );
+    }
+
+    @Test
+    @Disabled("Package upload is not implemented")
+    void shouldPutRoot() {
+        final Response response = this.php.response(
+            "PUT /base",
+            Collections.emptyList(),
+            Flowable.just(ByteBuffer.wrap("data2".getBytes()))
+        );
+        MatcherAssert.assertThat(
+            response,
+            new RsHasStatus(HttpURLConnection.HTTP_CREATED)
         );
     }
 
