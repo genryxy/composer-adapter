@@ -24,8 +24,8 @@
 package com.artpie.composer.http;
 
 import com.artipie.http.Response;
+import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
-import java.net.HttpURLConnection;
 
 /**
  * Root resource. Used as endpoint to add a package.
@@ -35,7 +35,7 @@ import java.net.HttpURLConnection;
 public final class Root implements Resource {
     @Override
     public Response get() {
-        return new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
+        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
     }
 
     @Override

@@ -26,14 +26,12 @@ package com.artpie.composer.http;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.http.Response;
+import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
 import com.artpie.composer.Name;
-import java.net.HttpURLConnection;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,46 +72,28 @@ public final class PackageMetadata implements Resource {
 
     @Override
     public Response put() {
-        return new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
+        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
     }
 
     @Override
     public Response get() {
-        Response response;
-        try {
-            response = this.getAsync().get();
-        } catch (final InterruptedException | ExecutionException ex) {
-            response = new RsWithStatus(HttpURLConnection.HTTP_INTERNAL_ERROR);
-        }
-        return response;
-    }
-
-    /**
-     * Serve GET method async.
-     *
-     * @return Response to request.
-     */
-    private Future<Response> getAsync() {
-        return CompletableFuture
-            .supplyAsync(this::key)
+        return connection -> CompletableFuture.supplyAsync(PackageMetadata.this::key)
             .thenCompose(
                 key -> this.storage.exists(key).thenCompose(
                     exists -> {
-                        final CompletionStage<Response> response;
+                        final CompletionStage<Void> sent;
                         if (exists) {
-                            response = this.storage.value(key).thenApplyAsync(
-                                data -> connection -> connection.accept(
-                                    HttpURLConnection.HTTP_OK,
+                            sent = this.storage.value(key).thenCompose(
+                                data -> connection.accept(
+                                    RsStatus.OK,
                                     Collections.emptyList(),
                                     data
                                 )
                             );
                         } else {
-                            response = CompletableFuture.completedFuture(
-                                new RsWithStatus(HttpURLConnection.HTTP_NOT_FOUND)
-                            );
+                            sent = new RsWithStatus(RsStatus.NOT_FOUND).send(connection);
                         }
-                        return response;
+                        return sent;
                     }
                 )
             );
