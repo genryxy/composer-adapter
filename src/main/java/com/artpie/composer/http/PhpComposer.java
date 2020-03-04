@@ -23,6 +23,7 @@
  */
 package com.artpie.composer.http;
 
+import com.artipie.asto.Storage;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
 import com.artipie.http.rq.RequestLineFrom;
@@ -45,12 +46,19 @@ public final class PhpComposer implements Slice {
     private final String base;
 
     /**
+     * Storage for packages.
+     */
+    private final Storage storage;
+
+    /**
      * Ctor.
      *
      * @param base Base path.
+     * @param storage Storage for packages.
      */
-    public PhpComposer(final String base) {
+    public PhpComposer(final String base, final Storage storage) {
         this.base = base;
+        this.storage = storage;
     }
 
     @Override
@@ -63,9 +71,11 @@ public final class PhpComposer implements Slice {
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
         if (path.startsWith(this.base)) {
-            final Resource resource = new PackageMetadata();
             if (request.method().equals("GET")) {
-                response = resource.get();
+                response = new PackageMetadata(
+                    path.substring(this.base.length()),
+                    this.storage
+                ).get();
             } else {
                 response = new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
             }
