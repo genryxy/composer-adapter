@@ -30,8 +30,8 @@ import com.artipie.asto.fs.FileStorage;
 import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
+import com.artipie.http.rs.RsStatus;
 import io.reactivex.Flowable;
-import java.net.HttpURLConnection;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,7 +81,7 @@ class PhpComposerTest {
             response,
             new AllOf<>(
                 Arrays.asList(
-                    new RsHasStatus(HttpURLConnection.HTTP_OK),
+                    new RsHasStatus(RsStatus.OK),
                     new RsHasBody(data)
                 )
             )
@@ -98,7 +98,7 @@ class PhpComposerTest {
         MatcherAssert.assertThat(
             "Resources from outside of base path should not be found",
             response,
-            new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND)
+            new RsHasStatus(RsStatus.NOT_FOUND)
         );
     }
 
@@ -112,7 +112,7 @@ class PhpComposerTest {
         MatcherAssert.assertThat(
             "Not existing metadata should not be found",
             response,
-            new RsHasStatus(HttpURLConnection.HTTP_NOT_FOUND)
+            new RsHasStatus(RsStatus.NOT_FOUND)
         );
     }
 
@@ -126,7 +126,7 @@ class PhpComposerTest {
         MatcherAssert.assertThat(
             "Package metadata cannot be put",
             response,
-            new RsHasStatus(HttpURLConnection.HTTP_BAD_METHOD)
+            new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
         );
     }
 }

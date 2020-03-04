@@ -27,8 +27,9 @@ import com.artipie.asto.Storage;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
 import com.artipie.http.rq.RequestLineFrom;
+import com.artipie.http.rq.RqMethod;
+import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
-import java.net.HttpURLConnection;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import org.reactivestreams.Publisher;
@@ -71,16 +72,16 @@ public final class PhpComposer implements Slice {
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
         if (path.startsWith(this.base)) {
-            if (request.method().equals("GET")) {
+            if (request.method().equals(RqMethod.GET)) {
                 response = new PackageMetadata(
                     path.substring(this.base.length()),
                     this.storage
                 ).get();
             } else {
-                response = new RsWithStatus(HttpURLConnection.HTTP_BAD_METHOD);
+                response = new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
             }
         } else {
-            response = new RsWithStatus(HttpURLConnection.HTTP_NOT_FOUND);
+            response = new RsWithStatus(RsStatus.NOT_FOUND);
         }
         return response;
     }
