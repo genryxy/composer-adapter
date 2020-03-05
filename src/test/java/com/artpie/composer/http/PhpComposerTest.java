@@ -32,12 +32,14 @@ import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.rs.RsStatus;
 import io.reactivex.Flowable;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -125,6 +127,49 @@ class PhpComposerTest {
         );
         MatcherAssert.assertThat(
             "Package metadata cannot be put",
+            response,
+            new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
+        );
+    }
+
+    @Test
+    @Disabled("Package upload is not implemented")
+    void shouldPutRoot() {
+        final Response response = this.php.response(
+            "PUT /base",
+            Collections.emptyList(),
+            Flowable.just(ByteBuffer.wrap("data2".getBytes()))
+        );
+        MatcherAssert.assertThat(
+            "Package should be created by put",
+            response,
+            new RsHasStatus(RsStatus.CREATED)
+        );
+    }
+
+    @Test
+    void shouldFailGetRootFromNotBasePath() {
+        final Response response = this.php.response(
+            "GET /not-base",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
+            "Root resource from outside of base path should not be found",
+            response,
+            new RsHasStatus(RsStatus.NOT_FOUND)
+        );
+    }
+
+    @Test
+    void shouldFailGetRoot() {
+        final Response response = this.php.response(
+            "GET /base",
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
+            "It should not be possible to get root resource",
             response,
             new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
         );

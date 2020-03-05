@@ -71,6 +71,11 @@ public final class PackageMetadata implements Resource {
     }
 
     @Override
+    public Response put() {
+        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @Override
     public Response get() {
         return connection -> CompletableFuture.supplyAsync(PackageMetadata.this::key)
             .thenCompose(
