@@ -26,14 +26,13 @@ package com.artpie.composer.http;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.fs.FileStorage;
+import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.rs.RsStatus;
 import io.reactivex.Flowable;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import org.hamcrest.MatcherAssert;
@@ -41,7 +40,6 @@ import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for {@link PhpComposer}.
@@ -61,8 +59,8 @@ class PhpComposerTest {
     private PhpComposer php;
 
     @BeforeEach
-    void init(final @TempDir Path temp) {
-        this.storage = new FileStorage(temp);
+    void init() {
+        this.storage = new InMemoryStorage();
         this.php = new PhpComposer("/base", this.storage);
     }
 

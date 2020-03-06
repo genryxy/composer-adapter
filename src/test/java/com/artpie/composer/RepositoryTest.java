@@ -27,13 +27,12 @@ package com.artpie.composer;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.fs.FileStorage;
+import com.artipie.asto.memory.InMemoryStorage;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.Path;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -45,7 +44,6 @@ import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 // @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
@@ -66,8 +64,8 @@ class RepositoryTest {
     private Package pack;
 
     @BeforeEach
-    void init(final @TempDir Path temp) throws Exception {
-        this.storage = new FileStorage(temp);
+    void init() throws Exception {
+        this.storage = new InMemoryStorage();
         this.pack = new JsonPackage(
             ByteSource.wrap(
                 ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
