@@ -21,11 +21,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.artipie.composer.http;
+
+import com.artipie.http.Response;
 
 /**
- * PHP Composer repository tests.
+ * Resource serving HTTP requests.
  *
  * @since 0.1
  */
+public interface Resource {
+    /**
+     * Serve GET method.
+     *
+     * @return Response to request.
+     */
+    Response get();
 
-package com.artpie.composer;
+    /**
+     * Serve PUT method.
+     *
+     * @return Response to request.
+     */
+    Response put();
+}

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package com.artpie.composer;
+package com.artipie.composer;
 
 import com.google.common.io.ByteSource;
 import java.io.IOException;
