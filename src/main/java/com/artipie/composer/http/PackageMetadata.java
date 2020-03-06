@@ -21,14 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artpie.composer.http;
+package com.artipie.composer.http;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.composer.Name;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
-import com.artpie.composer.Name;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;

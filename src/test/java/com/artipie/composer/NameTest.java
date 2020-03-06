@@ -22,9 +22,24 @@
  * SOFTWARE.
  */
 
+package com.artipie.composer;
+
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
+
 /**
- * PHP Composer repository HTTP front end.
+ * Tests for {@link Name}.
  *
  * @since 0.1
  */
-package com.artpie.composer.http;
+class NameTest {
+
+    @Test
+    void shouldGenerateKey() {
+        MatcherAssert.assertThat(
+            new Name("vendor/package").key().string(),
+            Matchers.is("vendor/package.json")
+        );
+    }
+}

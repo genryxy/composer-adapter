@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artpie.composer.http;
+package com.artipie.composer.http;
 
 import com.artipie.asto.Storage;
 import com.artipie.http.Response;

@@ -21,27 +21,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artpie.composer.http;
 
-import com.artipie.http.Response;
+package com.artipie.composer;
+
+import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
+import java.io.IOException;
+import org.cactoos.io.ResourceOf;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
- * Resource serving HTTP requests.
+ * Tests for {@link JsonPackage}.
  *
  * @since 0.1
  */
-public interface Resource {
-    /**
-     * Serve GET method.
-     *
-     * @return Response to request.
-     */
-    Response get();
+class JsonPackageTest {
 
     /**
-     * Serve PUT method.
-     *
-     * @return Response to request.
+     * Example package read from 'minimal-package.json'.
      */
-    Response put();
+    private Package pack;
+
+    @BeforeEach
+    void init() throws Exception {
+        final ResourceOf json = new ResourceOf("minimal-package.json");
+        this.pack = new JsonPackage(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
+    }
+
+    @Test
+    void shouldExtractName() throws IOException {
+        MatcherAssert.assertThat(
+            this.pack.name().key().string(),
+            Matchers.is("vendor/package.json")
+        );
+    }
+
+    @Test
+    void shouldExtractVersion() throws IOException {
+        MatcherAssert.assertThat(
+            this.pack.version(),
+            Matchers.is("1.2.0")
+        );
+    }
 }

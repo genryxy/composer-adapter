@@ -22,38 +22,9 @@
  * SOFTWARE.
  */
 
-package com.artpie.composer;
-
-import java.io.IOException;
-import javax.json.JsonObject;
-
 /**
- * PHP Composer package.
+ * PHP Composer repository HTTP front end tests.
  *
  * @since 0.1
  */
-public interface Package {
-    /**
-     * Extract name from package.
-     *
-     * @return Package name.
-     * @throws IOException In case exception occurred on reading content.
-     */
-    Name name() throws IOException;
-
-    /**
-     * Extract version from package.
-     *
-     * @return Package version.
-     * @throws IOException In case exception occurred on reading content.
-     */
-    String version() throws IOException;
-
-    /**
-     * Reads package content as JSON object.
-     *
-     * @return Package JSON object.
-     * @throws IOException In case exception occurred on reading content.
-     */
-    JsonObject json() throws IOException;
-}
+package com.artipie.composer.http;

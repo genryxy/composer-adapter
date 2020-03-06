@@ -22,10 +22,34 @@
  * SOFTWARE.
  */
 
+package com.artipie.composer;
+
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
 /**
- * PHP Composer repository tests.
+ * PHP Composer packages registry.
  *
  * @since 0.1
  */
+public interface Packages {
+    /**
+     * Add package.
+     *
+     * @param pack Package.
+     * @return Updated packages.
+     * @throws IOException In case of any I/O problems.
+     */
+    Packages add(Package pack) throws IOException;
 
-package com.artpie.composer;
+    /**
+     * Saves packages registry binary content to storage.
+     *
+     * @param storage Storage to use for saving.
+     * @param key Key to store packages.
+     * @return Completion of saving.
+     */
+    CompletableFuture<Void> save(Storage storage, Key key);
+}

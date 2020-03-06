@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package com.artpie.composer;
+package com.artipie.composer;
 
 import com.artipie.asto.Key;
 

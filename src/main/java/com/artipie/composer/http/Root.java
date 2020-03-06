@@ -21,10 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.artipie.composer.http;
+
+import com.artipie.http.Response;
+import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithStatus;
 
 /**
- * PHP Composer repository HTTP front end tests.
+ * Root resource. Used as endpoint to add a package.
  *
  * @since 0.1
  */
-package com.artpie.composer.http;
+public final class Root implements Resource {
+    @Override
+    public Response get() {
+        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @Override
+    public Response put() {
+        throw new UnsupportedOperationException();
+    }
+}

@@ -43,7 +43,7 @@ Save PHP Composer package JSON file like `composer.json` (particular name does n
 to [ASTO](https://github.com/artipie/asto) storage.
 
 ```java
-import com.artpie.asto.*;
+import com.artipie.asto.*;
 Storage storage = new FileStorage(Path.of("/path/to/storage"));
 storage.save(
     new Key.From("composer.json"), 
@@ -55,7 +55,7 @@ Then, make an instance of `Repository` class with storage as an argument.
 Finally, instruct `Repository` to add the package to repository:
 
 ```java
-import com.artpie.composer.*;
+import com.artipie.composer.*;
 Repository repo = new Repository(storage);
 repo.add(new Key.From("composer.json"));
 ```

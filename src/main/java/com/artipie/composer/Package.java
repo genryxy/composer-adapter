@@ -22,48 +22,38 @@
  * SOFTWARE.
  */
 
-package com.artpie.composer;
+package com.artipie.composer;
 
-import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
 import java.io.IOException;
-import org.cactoos.io.ResourceOf;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import javax.json.JsonObject;
 
 /**
- * Tests for {@link JsonPackage}.
+ * PHP Composer package.
  *
  * @since 0.1
  */
-class JsonPackageTest {
+public interface Package {
+    /**
+     * Extract name from package.
+     *
+     * @return Package name.
+     * @throws IOException In case exception occurred on reading content.
+     */
+    Name name() throws IOException;
 
     /**
-     * Example package read from 'minimal-package.json'.
+     * Extract version from package.
+     *
+     * @return Package version.
+     * @throws IOException In case exception occurred on reading content.
      */
-    private Package pack;
+    String version() throws IOException;
 
-    @BeforeEach
-    void init() throws Exception {
-        final ResourceOf json = new ResourceOf("minimal-package.json");
-        this.pack = new JsonPackage(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
-    }
-
-    @Test
-    void shouldExtractName() throws IOException {
-        MatcherAssert.assertThat(
-            this.pack.name().key().string(),
-            Matchers.is("vendor/package.json")
-        );
-    }
-
-    @Test
-    void shouldExtractVersion() throws IOException {
-        MatcherAssert.assertThat(
-            this.pack.version(),
-            Matchers.is("1.2.0")
-        );
-    }
+    /**
+     * Reads package content as JSON object.
+     *
+     * @return Package JSON object.
+     * @throws IOException In case exception occurred on reading content.
+     */
+    JsonObject json() throws IOException;
 }
