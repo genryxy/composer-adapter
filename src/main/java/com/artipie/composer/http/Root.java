@@ -23,9 +23,17 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
+import com.artipie.composer.Repository;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.reactivestreams.Publisher;
 
 /**
  * Root resource. Used as endpoint to add a package.
@@ -33,13 +41,42 @@ import com.artipie.http.rs.RsWithStatus;
  * @since 0.1
  */
 public final class Root implements Resource {
+
+    /**
+     * Storage to read content from.
+     */
+    private final Storage storage;
+
+    /**
+     * Ctor.
+     *
+     * @param storage Storage to read content from.
+     */
+    public Root(final Storage storage) {
+        this.storage = storage;
+    }
+
     @Override
     public Response get() {
         return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
     }
 
     @Override
-    public Response put() {
-        throw new UnsupportedOperationException();
+    public Response put(final Publisher<ByteBuffer> body) {
+        return connection -> CompletableFuture
+            .supplyAsync(() -> new Key.From(UUID.randomUUID().toString()))
+            .thenCompose(
+                key -> this.storage.save(key, body).thenCompose(
+                    ignored -> {
+                        try {
+                            return new Repository(this.storage).add(key);
+                        } catch (final IOException ex) {
+                            throw new IllegalStateException(ex);
+                        }
+                    }
+                ).thenCompose(
+                    ignored -> new RsWithStatus(RsStatus.CREATED).send(connection)
+                )
+            );
     }
 }
