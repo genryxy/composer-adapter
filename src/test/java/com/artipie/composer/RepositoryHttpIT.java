@@ -27,8 +27,9 @@ import com.google.common.collect.ImmutableList;
 import com.jcabi.log.Logger;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.UUID;
+import org.cactoos.list.ListOf;
+import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
@@ -83,7 +84,7 @@ class RepositoryHttpIT {
         MatcherAssert.assertThat(
             this.run("install"),
             new AllOf<>(
-                Arrays.asList(
+                new ListOf<Matcher<? super String>>(
                     new StringContains(false, "Installs: vendor/package:1.1.2"),
                     new StringContains(false, "100%")
                 )
