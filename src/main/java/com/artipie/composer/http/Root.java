@@ -43,7 +43,7 @@ import org.reactivestreams.Publisher;
 public final class Root implements Resource {
 
     /**
-     * Storage to read content from.
+     * Storage to put content into.
      */
     private final Storage storage;
 
