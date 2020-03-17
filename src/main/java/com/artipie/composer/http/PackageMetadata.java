@@ -29,11 +29,13 @@ import com.artipie.composer.Name;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.reactivestreams.Publisher;
 
 /**
  * Package metadata resource.
@@ -71,7 +73,7 @@ public final class PackageMetadata implements Resource {
     }
 
     @Override
-    public Response put() {
+    public Response put(final Publisher<ByteBuffer> body) {
         return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
     }
 

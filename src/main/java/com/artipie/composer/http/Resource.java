@@ -24,6 +24,8 @@
 package com.artipie.composer.http;
 
 import com.artipie.http.Response;
+import java.nio.ByteBuffer;
+import org.reactivestreams.Publisher;
 
 /**
  * Resource serving HTTP requests.
@@ -41,7 +43,8 @@ public interface Resource {
     /**
      * Serve PUT method.
      *
+     * @param body Request body.
      * @return Response to request.
      */
-    Response put();
+    Response put(Publisher<ByteBuffer> body);
 }

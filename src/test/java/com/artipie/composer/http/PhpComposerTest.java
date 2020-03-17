@@ -31,20 +31,22 @@ import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.rs.RsStatus;
+import com.google.common.io.ByteStreams;
 import io.reactivex.Flowable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link PhpComposer}.
  *
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 class PhpComposerTest {
 
@@ -131,12 +133,15 @@ class PhpComposerTest {
     }
 
     @Test
-    @Disabled("Package upload is not implemented")
-    void shouldPutRoot() {
+    void shouldPutRoot() throws Exception {
         final Response response = this.php.response(
             "PUT /base",
             Collections.emptyList(),
-            Flowable.just(ByteBuffer.wrap("data2".getBytes()))
+            Flowable.just(
+                ByteBuffer.wrap(
+                    ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
+                )
+            )
         );
         MatcherAssert.assertThat(
             "Package should be created by put",
