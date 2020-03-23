@@ -55,20 +55,20 @@ public class Repository {
     /**
      * Reads packages description from storage.
      *
+     * @return Packages found by name, might be empty.
+     */
+    public Packages packages() {
+        return this.packages(new AllPackages());
+    }
+
+    /**
+     * Reads packages description from storage.
+     *
      * @param name Package name.
      * @return Packages found by name, might be empty.
      */
     public Packages packages(final Name name) {
-        final Key key = name.key();
-        final BlockingStorage blocking = new BlockingStorage(this.storage);
-        final JsonPackages packages;
-        if (blocking.exists(key)) {
-            final ByteSource content = ByteSource.wrap(blocking.value(key));
-            packages = new JsonPackages(content);
-        } else {
-            packages = new JsonPackages();
-        }
-        return packages;
+        return this.packages(name.key());
     }
 
     /**
@@ -85,5 +85,23 @@ public class Repository {
         return this.packages(name)
             .add(pack)
             .save(this.storage, name.key());
+    }
+
+    /**
+     * Reads packages description from storage.
+     *
+     * @param key Content location in storage.
+     * @return Packages found by name, might be empty.
+     */
+    private Packages packages(final Key key) {
+        final BlockingStorage blocking = new BlockingStorage(this.storage);
+        final JsonPackages packages;
+        if (blocking.exists(key)) {
+            final ByteSource content = ByteSource.wrap(blocking.value(key));
+            packages = new JsonPackages(content);
+        } else {
+            packages = new JsonPackages();
+        }
+        return packages;
     }
 }

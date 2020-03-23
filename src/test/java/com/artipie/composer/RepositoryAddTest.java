@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.artipie.composer;
 
 import com.artipie.asto.Key;
@@ -40,18 +39,17 @@ import javax.json.JsonWriter;
 import org.cactoos.io.ResourceOf;
 import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
- * Tests for {@link Repository}.
+ * Tests for {@link Repository#add(Key)}.
  *
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
-class RepositoryTest {
+class RepositoryAddTest {
 
     /**
      * Storage used in tests.
@@ -70,32 +68,6 @@ class RepositoryTest {
             ByteSource.wrap(
                 ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
             )
-        );
-    }
-
-    @Test
-    void shouldLoadEmptyPackages() throws Exception {
-        final Name name = new Name("foo/bar");
-        final Packages packages = new Repository(this.storage).packages(name);
-        packages.save(this.storage, name.key()).get();
-        MatcherAssert.assertThat(
-            "Packages loaded when no content is in storage should be empty",
-            this.packages(name).keySet(),
-            new IsEmptyCollection<>()
-        );
-    }
-
-    @Test
-    void shouldLoadNonEmptyPackages() throws Exception {
-        final Name name = new Name("foo/bar2");
-        final byte[] bytes = "some data".getBytes();
-        new BlockingStorage(this.storage).save(name.key(), bytes);
-        final Packages packages = new Repository(this.storage).packages(name);
-        packages.save(this.storage, name.key()).get();
-        MatcherAssert.assertThat(
-            "Packages loaded and saved should preserve content without modification",
-            new BlockingStorage(this.storage).value(name.key()),
-            new IsEqual<>(bytes)
         );
     }
 
