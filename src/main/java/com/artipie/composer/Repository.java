@@ -82,9 +82,14 @@ public class Repository {
         final ByteSource content = ByteSource.wrap(new BlockingStorage(this.storage).value(key));
         final Package pack = new JsonPackage(content);
         final Name name = pack.name();
-        return this.packages(name)
-            .add(pack)
-            .save(this.storage, name.key());
+        return CompletableFuture.allOf(
+            this.packages()
+                .add(pack)
+                .save(this.storage, new AllPackages()),
+            this.packages(name)
+                .add(pack)
+                .save(this.storage, name.key())
+        );
     }
 
     /**

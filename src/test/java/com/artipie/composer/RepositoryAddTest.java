@@ -72,6 +72,30 @@ class RepositoryAddTest {
     }
 
     @Test
+    void shouldAddPackageToAll() throws Exception {
+        new Repository(this.storage).add(this.savePackage()).get();
+        final Name name = this.pack.name();
+        MatcherAssert.assertThat(
+            this.packages().getJsonObject(name.string()).keySet(),
+            new IsEqual<>(new SetOf<>(this.pack.version()))
+        );
+    }
+
+    @Test
+    void shouldAddPackageToAllWhenOtherVersionExists() throws Exception {
+        new BlockingStorage(this.storage).save(
+            new AllPackages(),
+            "{\"packages\":{\"vendor/package\":{\"2.0\":{}}}}".getBytes()
+        );
+        final Key.From key = this.savePackage();
+        new Repository(this.storage).add(key).get();
+        MatcherAssert.assertThat(
+            this.packages().getJsonObject("vendor/package").keySet(),
+            new IsEqual<>(new SetOf<>("2.0", this.pack.version()))
+        );
+    }
+
+    @Test
     void shouldAddPackage() throws Exception {
         final Key.From key = this.savePackage();
         new Repository(this.storage).add(key).get();
@@ -100,9 +124,17 @@ class RepositoryAddTest {
         );
     }
 
+    private JsonObject packages() {
+        return this.packages(new AllPackages());
+    }
+
     private JsonObject packages(final Name name) {
+        return this.packages(name.key());
+    }
+
+    private JsonObject packages(final Key key) {
         final JsonObject saved;
-        final byte[] bytes = new BlockingStorage(this.storage).value(name.key());
+        final byte[] bytes = new BlockingStorage(this.storage).value(key);
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
             saved = reader.readObject();
         }
