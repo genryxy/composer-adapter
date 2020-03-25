@@ -83,7 +83,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>asto</artifactId>
-      <version>0.14.3</version>
+      <version>0.15</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
@@ -127,6 +127,18 @@ SOFTWARE.
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.artipie</groupId>
+      <artifactId>vertx-server</artifactId>
+      <version>0.2.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.artipie</groupId>
+      <artifactId>files-adapter</artifactId>
+      <version>0.2</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

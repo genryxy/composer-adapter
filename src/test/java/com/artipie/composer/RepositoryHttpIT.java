@@ -23,16 +23,30 @@
  */
 package com.artipie.composer;
 
+import com.artipie.asto.Key;
+import com.artipie.asto.blocking.BlockingStorage;
+import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.composer.http.PhpComposer;
+import com.artipie.files.FilesSlice;
+import com.artipie.vertx.VertxSliceServer;
 import com.google.common.collect.ImmutableList;
 import com.jcabi.log.Logger;
+import io.vertx.reactivex.core.Vertx;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.zip.ZipOutputStream;
+import javax.json.Json;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -42,6 +56,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Integration test for PHP Composer repository.
  *
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 class RepositoryHttpIT {
 
@@ -53,20 +68,66 @@ class RepositoryHttpIT {
     Path temp;
 
     /**
+     * Vert.x instance to use in tests.
+     */
+    private Vertx vertx;
+
+    /**
      * Path to PHP project directory.
      */
     private Path project;
 
+    /**
+     * HTTP server hosting repository.
+     */
+    private VertxSliceServer server;
+
+    /**
+     * Repository URL.
+     */
+    private String url;
+
     @BeforeEach
     void setUp() throws Exception {
+        this.vertx = Vertx.vertx();
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.ensureComposerInstalled();
+        final String path = String.format("/%s", UUID.randomUUID().toString());
+        this.server = new VertxSliceServer(
+            this.vertx,
+            new PhpComposer(path, new InMemoryStorage())
+        );
+        final int port = this.server.start();
+        this.url = String.format("http://localhost:%s%s", port, path);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (this.server != null) {
+            this.server.stop();
+        }
+        if (this.vertx != null) {
+            this.vertx.close();
+        }
     }
 
     @Test
     @Disabled("Not implemented")
     void shouldInstallAddedPackage() throws Exception {
+        this.addPackage(
+            Json.createObjectBuilder()
+                .add("name", "vendor/package")
+                .add("version", "1.1.2")
+                .add(
+                    "dist",
+                    Json.createObjectBuilder()
+                        .add("url", this.upload(RepositoryHttpIT.emptyZip()))
+                        .add("type", "zip")
+                )
+                .build()
+                .toString()
+        );
         Files.write(
             this.project.resolve("composer.json"),
             String.join(
@@ -74,7 +135,7 @@ class RepositoryHttpIT {
                 "{",
                 "\"config\":{ \"secure-http\": false },",
                 "\"repositories\": [",
-                "{\"type\": \"composer\", \"url\": \"http://localhost:8080/myrepo/\"},",
+                String.format("{\"type\": \"composer\", \"url\": \"%s\"},", this.url),
                 "{\"packagist.org\": false} ",
                 "],",
                 "\"require\": { \"vendor/package\": \"1.1.2\" }",
@@ -90,6 +151,38 @@ class RepositoryHttpIT {
                 )
             )
         );
+    }
+
+    private void addPackage(final String pack) throws Exception {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(this.url).openConnection();
+            conn.setRequestMethod("PUT");
+            conn.setDoInput(true);
+            conn.setDoOutput(true);
+            try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
+                dos.write(pack.getBytes());
+                dos.flush();
+            }
+            final int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_CREATED) {
+                throw new IllegalStateException(
+                    String.format("Failed to upload package: %d", status)
+                );
+            }
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private String upload(final byte[] content) {
+        final InMemoryStorage files = new InMemoryStorage();
+        final String name = UUID.randomUUID().toString();
+        new BlockingStorage(files).save(new Key.From(name), content);
+        final int port = new VertxSliceServer(this.vertx, new FilesSlice(files)).start();
+        return String.format("http://localhost:%d/%s", port, name);
     }
 
     private void ensureComposerInstalled() throws Exception {
@@ -123,5 +216,12 @@ class RepositoryHttpIT {
             throw new IllegalStateException(String.format("Not OK exit code: %d", code));
         }
         return log;
+    }
+
+    private static byte[] emptyZip() throws Exception {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final ZipOutputStream zip = new ZipOutputStream(bos);
+        zip.close();
+        return bos.toByteArray();
     }
 }
