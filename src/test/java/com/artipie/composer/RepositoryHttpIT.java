@@ -40,6 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.zip.ZipOutputStream;
+import javax.json.Json;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -115,17 +116,17 @@ class RepositoryHttpIT {
     @Disabled("Not implemented")
     void shouldInstallAddedPackage() throws Exception {
         this.addPackage(
-            String.join(
-                "",
-                "{",
-                "\"name\": \"vendor/package\",",
-                "\"version\": \"1.1.2\",",
-                "\"dist\": {",
-                String.format("\"url\": \"%s\",", this.upload(RepositoryHttpIT.emptyZip())),
-                "\"type\": \"zip\"",
-                "}",
-                "}"
-            )
+            Json.createObjectBuilder()
+                .add("name", "vendor/package")
+                .add("version", "1.1.2")
+                .add(
+                    "dist",
+                    Json.createObjectBuilder()
+                        .add("url", this.upload(RepositoryHttpIT.emptyZip()))
+                        .add("type", "zip")
+                )
+                .build()
+                .toString()
         );
         Files.write(
             this.project.resolve("composer.json"),
