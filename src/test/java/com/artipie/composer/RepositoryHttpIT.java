@@ -48,7 +48,6 @@ import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -113,7 +112,6 @@ class RepositoryHttpIT {
     }
 
     @Test
-    @Disabled("Not implemented")
     void shouldInstallAddedPackage() throws Exception {
         this.addPackage(
             Json.createObjectBuilder()
@@ -200,7 +198,7 @@ class RepositoryHttpIT {
             .directory(this.project.toFile())
             .command(
                 ImmutableList.<String>builder()
-                    .add("composer")
+                    .add(RepositoryHttpIT.command())
                     .add(args)
                     .add("--verbose")
                     .add("--no-cache")
@@ -216,6 +214,16 @@ class RepositoryHttpIT {
             throw new IllegalStateException(String.format("Not OK exit code: %d", code));
         }
         return log;
+    }
+
+    private static String command() {
+        final String cmd;
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            cmd = "composer.bat";
+        } else {
+            cmd = "composer";
+        }
+        return cmd;
     }
 
     private static byte[] emptyZip() throws Exception {
