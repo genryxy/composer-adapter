@@ -39,6 +39,11 @@ import java.util.concurrent.CompletableFuture;
 public class Repository {
 
     /**
+     * Key to all packages.
+     */
+    public static final Key ALL_PACKAGES = new AllPackages();
+
+    /**
      * The storage.
      */
     private final Storage storage;
@@ -58,7 +63,7 @@ public class Repository {
      * @return Packages found by name, might be empty.
      */
     public Packages packages() {
-        return this.packages(new AllPackages());
+        return this.packages(Repository.ALL_PACKAGES);
     }
 
     /**
@@ -82,9 +87,14 @@ public class Repository {
         final ByteSource content = ByteSource.wrap(new BlockingStorage(this.storage).value(key));
         final Package pack = new JsonPackage(content);
         final Name name = pack.name();
-        return this.packages(name)
-            .add(pack)
-            .save(this.storage, name.key());
+        return CompletableFuture.allOf(
+            this.packages()
+                .add(pack)
+                .save(this.storage, Repository.ALL_PACKAGES),
+            this.packages(name)
+                .add(pack)
+                .save(this.storage, name.key())
+        );
     }
 
     /**
