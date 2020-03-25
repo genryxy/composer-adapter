@@ -27,6 +27,7 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.composer.AllPackages;
 import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
@@ -49,6 +50,11 @@ import org.junit.jupiter.api.Test;
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 class PhpComposerTest {
+
+    /**
+     * Request line to get all packages.
+     */
+    private static final String GET_PACKAGES = "GET /base/packages.json";
 
     /**
      * Storage used in tests.
@@ -129,6 +135,39 @@ class PhpComposerTest {
             "Package metadata cannot be put",
             response,
             new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
+        );
+    }
+
+    @Test
+    void shouldGetAllPackages() {
+        final byte[] data = "all packages".getBytes();
+        new BlockingStorage(this.storage).save(new AllPackages(), data);
+        final Response response = this.php.response(
+            PhpComposerTest.GET_PACKAGES,
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
+            response,
+            new AllOf<>(
+                Arrays.asList(
+                    new RsHasStatus(RsStatus.OK),
+                    new RsHasBody(data)
+                )
+            )
+        );
+    }
+
+    @Test
+    void shouldFailGetAllPackagesWhenNotExists() {
+        final Response response = this.php.response(
+            PhpComposerTest.GET_PACKAGES,
+            Collections.emptyList(),
+            Flowable.empty()
+        );
+        MatcherAssert.assertThat(
+            response,
+            new RsHasStatus(RsStatus.NOT_FOUND)
         );
     }
 

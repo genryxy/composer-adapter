@@ -25,6 +25,7 @@ package com.artipie.composer.http;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.composer.AllPackages;
 import com.artipie.composer.Name;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
@@ -107,14 +108,17 @@ public final class PackageMetadata implements Resource {
      * @return Key to storage value.
      */
     private Key key() {
+        final Key key;
         final Matcher matcher = PATH_PATTERN.matcher(this.path);
-        if (!matcher.find()) {
-            throw new IllegalStateException(
-                String.format("Unexpected path: %s", this.path)
-            );
+        if (matcher.find()) {
+            key = new Name(
+                String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
+            ).key();
+        } else if (this.path.equals("/packages.json")) {
+            key = new AllPackages();
+        } else {
+            throw new IllegalStateException(String.format("Unexpected path: %s", this.path));
         }
-        return new Name(
-            String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
-        ).key();
+        return key;
     }
 }
