@@ -114,7 +114,7 @@ public final class PackageMetadata implements Resource {
             key = new Name(
                 String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
             ).key();
-        } else if (this.path.equals("/packages.json")) {
+        } else if (this.path.equals(String.format("/%s", new AllPackages().string()))) {
             key = new AllPackages();
         } else {
             throw new IllegalStateException(String.format("Unexpected path: %s", this.path));
