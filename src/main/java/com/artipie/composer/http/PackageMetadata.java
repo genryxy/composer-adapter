@@ -46,6 +46,11 @@ import org.reactivestreams.Publisher;
 public final class PackageMetadata implements Resource {
 
     /**
+     * Key to all packages.
+     */
+    public static final Key ALL_PACKAGES = new AllPackages();
+
+    /**
      * RegEx pattern for matching path.
      */
     private static final Pattern PATH_PATTERN = Pattern.compile(
@@ -114,8 +119,8 @@ public final class PackageMetadata implements Resource {
             key = new Name(
                 String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
             ).key();
-        } else if (this.path.equals(String.format("/%s", new AllPackages().string()))) {
-            key = new AllPackages();
+        } else if (this.path.equals(String.format("/%s", PackageMetadata.ALL_PACKAGES.string()))) {
+            key = PackageMetadata.ALL_PACKAGES;
         } else {
             throw new IllegalStateException(String.format("Unexpected path: %s", this.path));
         }
