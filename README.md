@@ -72,8 +72,8 @@ for more technical details.
 ## Project status
 
 - [x] Adding package to repository [#1](https://github.com/artipie/composer-adapter/issues/1)
-- [ ] HTTP support for adding package as `composer.json` [#22](https://github.com/artipie/composer-adapter/issues/22)
-- [ ] HTTP support for getting package metadata [#24](https://github.com/artipie/composer-adapter/issues/24)
+- [x] HTTP support for adding package as `composer.json` [#22](https://github.com/artipie/composer-adapter/issues/22)
+- [x] HTTP support for getting package metadata [#24](https://github.com/artipie/composer-adapter/issues/24)
 - [ ] HTTP support for adding package as ZIP archive [#23](https://github.com/artipie/composer-adapter/issues/23)
 
 ## How to contribute
