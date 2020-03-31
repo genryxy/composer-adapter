@@ -94,6 +94,8 @@ public class Repository {
             this.packages(name)
                 .add(pack)
                 .save(this.storage, name.key())
+        ).thenCompose(
+            ignored -> this.storage.delete(key)
         );
     }
 
