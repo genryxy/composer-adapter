@@ -124,6 +124,16 @@ class RepositoryAddTest {
         );
     }
 
+    @Test
+    void shouldDeleteSourceAfterAdding() throws Exception {
+        final Key.From source = this.savePackage();
+        new Repository(this.storage).add(source).get();
+        MatcherAssert.assertThat(
+            this.storage.exists(source).get(),
+            new IsEqual<>(false)
+        );
+    }
+
     private JsonObject packages() {
         return this.packages(new AllPackages());
     }
