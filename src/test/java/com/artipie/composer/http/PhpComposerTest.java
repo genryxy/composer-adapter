@@ -31,6 +31,8 @@ import com.artipie.composer.AllPackages;
 import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
+import com.artipie.http.rq.RequestLine;
+import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
 import com.google.common.io.ByteStreams;
 import io.reactivex.Flowable;
@@ -49,12 +51,15 @@ import org.junit.jupiter.api.Test;
  * @since 0.1
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class PhpComposerTest {
 
     /**
      * Request line to get all packages.
      */
-    private static final String GET_PACKAGES = "GET /base/packages.json";
+    private static final String GET_PACKAGES = new RequestLine(
+        RqMethod.GET, "/base/packages.json"
+    ).toString();
 
     /**
      * Storage used in tests.
@@ -73,14 +78,14 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldGetPackageContent() {
+    void shouldGetPackageContent() throws Exception {
         final byte[] data = "data".getBytes();
         new BlockingStorage(this.storage).save(
             new Key.From("vendor", "package.json"),
             data
         );
         final Response response = this.php.response(
-            "GET /base/p/vendor/package.json",
+            new RequestLine(RqMethod.GET, "/base/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -99,7 +104,7 @@ class PhpComposerTest {
     @Test
     void shouldFailGetPackageMetadataFromNotBasePath() {
         final Response response = this.php.response(
-            "GET /not-base/p/vendor/package.json",
+            new RequestLine(RqMethod.GET, "/not-base/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -113,7 +118,7 @@ class PhpComposerTest {
     @Test
     void shouldFailGetPackageMetadataWhenNotExists() {
         final Response response = this.php.response(
-            "GET /base/p/vendor/unknown-package.json",
+            new RequestLine(RqMethod.GET, "/base/p/vendor/unknown-package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -127,7 +132,7 @@ class PhpComposerTest {
     @Test
     void shouldFailPutPackageMetadata() {
         final Response response = this.php.response(
-            "PUT /base/p/vendor/package.json",
+            new RequestLine(RqMethod.PUT, "/base/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -139,7 +144,7 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldGetAllPackages() {
+    void shouldGetAllPackages() throws Exception {
         final byte[] data = "all packages".getBytes();
         new BlockingStorage(this.storage).save(new AllPackages(), data);
         final Response response = this.php.response(
@@ -174,7 +179,7 @@ class PhpComposerTest {
     @Test
     void shouldPutRoot() throws Exception {
         final Response response = this.php.response(
-            "PUT /base",
+            new RequestLine(RqMethod.PUT, "/base").toString(),
             Collections.emptyList(),
             Flowable.just(
                 ByteBuffer.wrap(
@@ -192,7 +197,7 @@ class PhpComposerTest {
     @Test
     void shouldFailGetRootFromNotBasePath() {
         final Response response = this.php.response(
-            "GET /not-base",
+            new RequestLine(RqMethod.GET, "/not-base").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -206,7 +211,7 @@ class PhpComposerTest {
     @Test
     void shouldFailGetRoot() {
         final Response response = this.php.response(
-            "GET /base",
+            new RequestLine(RqMethod.GET, "/base").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );

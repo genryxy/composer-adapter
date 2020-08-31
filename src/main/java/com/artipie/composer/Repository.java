@@ -61,8 +61,9 @@ public class Repository {
      * Reads packages description from storage.
      *
      * @return Packages found by name, might be empty.
+     * @throws InterruptedException In case the thread was interrupted.
      */
-    public Packages packages() {
+    public Packages packages() throws InterruptedException {
         return this.packages(Repository.ALL_PACKAGES);
     }
 
@@ -71,8 +72,9 @@ public class Repository {
      *
      * @param name Package name.
      * @return Packages found by name, might be empty.
+     * @throws InterruptedException In case the thread was interrupted.
      */
-    public Packages packages(final Name name) {
+    public Packages packages(final Name name) throws InterruptedException {
         return this.packages(name.key());
     }
 
@@ -82,8 +84,9 @@ public class Repository {
      * @param key Key to find content of package JSON.
      * @return Completion of adding package to repository.
      * @throws IOException In case exception occurred on operations with storage.
+     * @throws InterruptedException In case the thread was interrupted.
      */
-    public CompletableFuture<Void> add(final Key key) throws IOException {
+    public CompletableFuture<Void> add(final Key key) throws IOException, InterruptedException {
         final ByteSource content = ByteSource.wrap(new BlockingStorage(this.storage).value(key));
         final Package pack = new JsonPackage(content);
         final Name name = pack.name();
@@ -104,8 +107,9 @@ public class Repository {
      *
      * @param key Content location in storage.
      * @return Packages found by name, might be empty.
+     * @throws InterruptedException In case the thread was interrupted.
      */
-    private Packages packages(final Key key) {
+    private Packages packages(final Key key) throws InterruptedException {
         final BlockingStorage blocking = new BlockingStorage(this.storage);
         final JsonPackages packages;
         if (blocking.exists(key)) {

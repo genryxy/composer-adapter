@@ -126,7 +126,7 @@ class JsonPackagesTest {
         return this.json(this.pack.name().key());
     }
 
-    private JsonObject json(final Key key) {
+    private JsonObject json(final Key key) throws Exception {
         final byte[] bytes = new BlockingStorage(this.storage).value(key);
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
             return reader.readObject();

@@ -98,15 +98,15 @@ class RepositoryPackagesTest {
         );
     }
 
-    private JsonObject packages() {
+    private JsonObject packages() throws Exception {
         return this.packages(new AllPackages());
     }
 
-    private JsonObject packages(final Name name) {
+    private JsonObject packages(final Name name) throws Exception {
         return this.packages(name.key());
     }
 
-    private JsonObject packages(final Key key) {
+    private JsonObject packages(final Key key) throws Exception {
         final JsonObject saved;
         final byte[] bytes = new BlockingStorage(this.storage).value(key);
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {

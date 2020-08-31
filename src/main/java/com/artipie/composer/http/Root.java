@@ -71,7 +71,7 @@ public final class Root implements Resource {
                     ignored -> {
                         try {
                             return new Repository(this.storage).add(key);
-                        } catch (final IOException ex) {
+                        } catch (final IOException | InterruptedException ex) {
                             throw new IllegalStateException(ex);
                         }
                     }

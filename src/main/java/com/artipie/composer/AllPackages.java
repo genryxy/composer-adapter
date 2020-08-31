@@ -24,6 +24,7 @@
 package com.artipie.composer;
 
 import com.artipie.asto.Key;
+import java.util.Optional;
 
 /**
  * Key for all packages value.
@@ -34,5 +35,10 @@ public final class AllPackages implements Key {
     @Override
     public String string() {
         return "packages.json";
+    }
+
+    @Override
+    public Optional<Key> parent() {
+        return Optional.empty();
     }
 }
