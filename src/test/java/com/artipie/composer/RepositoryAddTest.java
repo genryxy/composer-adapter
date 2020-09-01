@@ -31,7 +31,6 @@ import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -134,15 +133,15 @@ class RepositoryAddTest {
         );
     }
 
-    private JsonObject packages() {
+    private JsonObject packages() throws Exception {
         return this.packages(new AllPackages());
     }
 
-    private JsonObject packages(final Name name) {
+    private JsonObject packages(final Name name) throws Exception {
         return this.packages(name.key());
     }
 
-    private JsonObject packages(final Key key) {
+    private JsonObject packages(final Key key) throws Exception {
         final JsonObject saved;
         final byte[] bytes = new BlockingStorage(this.storage).value(key);
         try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
@@ -151,7 +150,7 @@ class RepositoryAddTest {
         return saved.getJsonObject("packages");
     }
 
-    private Key.From savePackage() throws IOException {
+    private Key.From savePackage() throws Exception {
         final byte[] bytes;
         try (ByteArrayOutputStream out = new ByteArrayOutputStream();
             JsonWriter writer = Json.createWriter(out)) {

@@ -27,11 +27,11 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.composer.AllPackages;
 import com.artipie.composer.Name;
+import com.artipie.http.Headers;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.regex.Matcher;
@@ -94,7 +94,7 @@ public final class PackageMetadata implements Resource {
                             sent = this.storage.value(key).thenCompose(
                                 data -> connection.accept(
                                     RsStatus.OK,
-                                    Collections.emptyList(),
+                                    Headers.EMPTY,
                                     data
                                 )
                             );

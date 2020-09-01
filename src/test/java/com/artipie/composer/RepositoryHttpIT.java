@@ -175,7 +175,7 @@ class RepositoryHttpIT {
         }
     }
 
-    private String upload(final byte[] content) {
+    private String upload(final byte[] content) throws Exception {
         final InMemoryStorage files = new InMemoryStorage();
         final String name = UUID.randomUUID().toString();
         new BlockingStorage(files).save(new Key.From(name), content);
