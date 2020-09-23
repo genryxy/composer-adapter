@@ -44,6 +44,8 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Tests for {@link PhpComposer}.
@@ -115,10 +117,11 @@ class PhpComposerTest {
         );
     }
 
-    @Test
-    void shouldFailPutPackageMetadata() {
+    @ParameterizedTest
+    @ValueSource(strings = {"PUT", "HEAD", "DELETE", "PATCH"})
+    void shouldRespondMethodNotAllowedForPackageMetadata(final RqMethod method) {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.PUT, "/p/vendor/package.json").toString(),
+            new RequestLine(method, "/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -180,15 +183,15 @@ class PhpComposerTest {
         );
     }
 
-    @Test
-    void shouldFailGetRoot() {
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "HEAD", "DELETE", "PATCH"})
+    void shouldRespondMethodNotAllowedForRoot(final RqMethod method) {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/").toString(),
+            new RequestLine(method, "/").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
         MatcherAssert.assertThat(
-            "It should not be possible to get root resource",
             response,
             new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
         );
