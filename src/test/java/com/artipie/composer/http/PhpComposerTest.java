@@ -44,6 +44,8 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Tests for {@link PhpComposer}.
@@ -58,7 +60,7 @@ class PhpComposerTest {
      * Request line to get all packages.
      */
     private static final String GET_PACKAGES = new RequestLine(
-        RqMethod.GET, "/base/packages.json"
+        RqMethod.GET, "/packages.json"
     ).toString();
 
     /**
@@ -74,7 +76,7 @@ class PhpComposerTest {
     @BeforeEach
     void init() {
         this.storage = new InMemoryStorage();
-        this.php = new PhpComposer("/base", this.storage);
+        this.php = new PhpComposer(this.storage);
     }
 
     @Test
@@ -85,7 +87,7 @@ class PhpComposerTest {
             data
         );
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base/p/vendor/package.json").toString(),
+            new RequestLine(RqMethod.GET, "/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -102,23 +104,9 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldFailGetPackageMetadataFromNotBasePath() {
-        final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/not-base/p/vendor/package.json").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            "Resources from outside of base path should not be found",
-            response,
-            new RsHasStatus(RsStatus.NOT_FOUND)
-        );
-    }
-
-    @Test
     void shouldFailGetPackageMetadataWhenNotExists() {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base/p/vendor/unknown-package.json").toString(),
+            new RequestLine(RqMethod.GET, "/p/vendor/unknown-package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -129,10 +117,11 @@ class PhpComposerTest {
         );
     }
 
-    @Test
-    void shouldFailPutPackageMetadata() {
+    @ParameterizedTest
+    @ValueSource(strings = {"PUT", "HEAD", "DELETE", "PATCH"})
+    void shouldRespondMethodNotAllowedForPackageMetadata(final RqMethod method) {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.PUT, "/base/p/vendor/package.json").toString(),
+            new RequestLine(method, "/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -179,7 +168,7 @@ class PhpComposerTest {
     @Test
     void shouldPutRoot() throws Exception {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.PUT, "/base").toString(),
+            new RequestLine(RqMethod.PUT, "/").toString(),
             Collections.emptyList(),
             Flowable.just(
                 ByteBuffer.wrap(
@@ -194,29 +183,15 @@ class PhpComposerTest {
         );
     }
 
-    @Test
-    void shouldFailGetRootFromNotBasePath() {
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "HEAD", "DELETE", "PATCH"})
+    void shouldRespondMethodNotAllowedForRoot(final RqMethod method) {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/not-base").toString(),
+            new RequestLine(method, "/").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
         MatcherAssert.assertThat(
-            "Root resource from outside of base path should not be found",
-            response,
-            new RsHasStatus(RsStatus.NOT_FOUND)
-        );
-    }
-
-    @Test
-    void shouldFailGetRoot() {
-        final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            "It should not be possible to get root resource",
             response,
             new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
         );

@@ -92,13 +92,12 @@ class RepositoryHttpIT {
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.ensureComposerInstalled();
-        final String path = String.format("/%s", UUID.randomUUID().toString());
         this.server = new VertxSliceServer(
             this.vertx,
-            new PhpComposer(path, new InMemoryStorage())
+            new PhpComposer(new InMemoryStorage())
         );
         final int port = this.server.start();
-        this.url = String.format("http://localhost:%s%s", port, path);
+        this.url = String.format("http://localhost:%s", port);
     }
 
     @AfterEach
