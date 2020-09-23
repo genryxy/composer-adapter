@@ -58,7 +58,7 @@ class PhpComposerTest {
      * Request line to get all packages.
      */
     private static final String GET_PACKAGES = new RequestLine(
-        RqMethod.GET, "/base/packages.json"
+        RqMethod.GET, "/packages.json"
     ).toString();
 
     /**
@@ -74,7 +74,7 @@ class PhpComposerTest {
     @BeforeEach
     void init() {
         this.storage = new InMemoryStorage();
-        this.php = new PhpComposer("/base", this.storage);
+        this.php = new PhpComposer(this.storage);
     }
 
     @Test
@@ -85,7 +85,7 @@ class PhpComposerTest {
             data
         );
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base/p/vendor/package.json").toString(),
+            new RequestLine(RqMethod.GET, "/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -102,23 +102,9 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldFailGetPackageMetadataFromNotBasePath() {
-        final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/not-base/p/vendor/package.json").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            "Resources from outside of base path should not be found",
-            response,
-            new RsHasStatus(RsStatus.NOT_FOUND)
-        );
-    }
-
-    @Test
     void shouldFailGetPackageMetadataWhenNotExists() {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base/p/vendor/unknown-package.json").toString(),
+            new RequestLine(RqMethod.GET, "/p/vendor/unknown-package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -132,7 +118,7 @@ class PhpComposerTest {
     @Test
     void shouldFailPutPackageMetadata() {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.PUT, "/base/p/vendor/package.json").toString(),
+            new RequestLine(RqMethod.PUT, "/p/vendor/package.json").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );
@@ -179,7 +165,7 @@ class PhpComposerTest {
     @Test
     void shouldPutRoot() throws Exception {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.PUT, "/base").toString(),
+            new RequestLine(RqMethod.PUT, "/").toString(),
             Collections.emptyList(),
             Flowable.just(
                 ByteBuffer.wrap(
@@ -195,23 +181,9 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldFailGetRootFromNotBasePath() {
-        final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/not-base").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            "Root resource from outside of base path should not be found",
-            response,
-            new RsHasStatus(RsStatus.NOT_FOUND)
-        );
-    }
-
-    @Test
     void shouldFailGetRoot() {
         final Response response = this.php.response(
-            new RequestLine(RqMethod.GET, "/base").toString(),
+            new RequestLine(RqMethod.GET, "/").toString(),
             Collections.emptyList(),
             Flowable.empty()
         );

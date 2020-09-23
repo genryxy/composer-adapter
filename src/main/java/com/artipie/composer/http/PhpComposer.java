@@ -42,11 +42,6 @@ import org.reactivestreams.Publisher;
 public final class PhpComposer implements Slice {
 
     /**
-     * Base path.
-     */
-    private final String base;
-
-    /**
      * Storage for packages.
      */
     private final Storage storage;
@@ -54,11 +49,9 @@ public final class PhpComposer implements Slice {
     /**
      * Ctor.
      *
-     * @param base Base path.
      * @param storage Storage for packages.
      */
-    public PhpComposer(final String base, final Storage storage) {
-        this.base = base;
+    public PhpComposer(final Storage storage) {
         this.storage = storage;
     }
 
@@ -71,18 +64,14 @@ public final class PhpComposer implements Slice {
         final Response response;
         final RequestLineFrom request = new RequestLineFrom(line);
         final String path = request.uri().getPath();
-        if (path.startsWith(this.base)) {
-            final Resource resource = this.resource(path.substring(this.base.length()));
-            final RqMethod method = request.method();
-            if (method.equals(RqMethod.GET)) {
-                response = resource.get();
-            } else if (method.equals(RqMethod.PUT)) {
-                response = resource.put(body);
-            } else {
-                response = new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
-            }
+        final Resource resource = this.resource(path);
+        final RqMethod method = request.method();
+        if (method.equals(RqMethod.GET)) {
+            response = resource.get();
+        } else if (method.equals(RqMethod.PUT)) {
+            response = resource.put(body);
         } else {
-            response = new RsWithStatus(RsStatus.NOT_FOUND);
+            response = new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
         }
         return response;
     }
@@ -95,7 +84,7 @@ public final class PhpComposer implements Slice {
      */
     private Resource resource(final String path) {
         final Resource resource;
-        if (path.isEmpty()) {
+        if (path.equals("/")) {
             resource = new Root(this.storage);
         } else {
             resource = new PackageMetadata(path, this.storage);
