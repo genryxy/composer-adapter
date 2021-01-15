@@ -26,10 +26,10 @@ package com.artipie.composer;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
+import com.artipie.asto.ext.PublisherAs;
 import com.google.common.io.ByteSource;
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Class representing PHP Composer repository.
@@ -61,9 +61,8 @@ public class Repository {
      * Reads packages description from storage.
      *
      * @return Packages found by name, might be empty.
-     * @throws InterruptedException In case the thread was interrupted.
      */
-    public Packages packages() throws InterruptedException {
+    public CompletionStage<Packages> packages() {
         return this.packages(Repository.ALL_PACKAGES);
     }
 
@@ -72,9 +71,8 @@ public class Repository {
      *
      * @param name Package name.
      * @return Packages found by name, might be empty.
-     * @throws InterruptedException In case the thread was interrupted.
      */
-    public Packages packages(final Name name) throws InterruptedException {
+    public CompletionStage<Packages> packages(final Name name) {
         return this.packages(name.key());
     }
 
@@ -83,23 +81,29 @@ public class Repository {
      *
      * @param key Key to find content of package JSON.
      * @return Completion of adding package to repository.
-     * @throws IOException In case exception occurred on operations with storage.
-     * @throws InterruptedException In case the thread was interrupted.
      */
-    public CompletableFuture<Void> add(final Key key) throws IOException, InterruptedException {
-        final ByteSource content = ByteSource.wrap(new BlockingStorage(this.storage).value(key));
-        final Package pack = new JsonPackage(content);
-        final Name name = pack.name();
-        return CompletableFuture.allOf(
-            this.packages()
-                .add(pack)
-                .save(this.storage, Repository.ALL_PACKAGES),
-            this.packages(name)
-                .add(pack)
-                .save(this.storage, name.key())
-        ).thenCompose(
-            ignored -> this.storage.delete(key)
-        );
+    public CompletableFuture<Void> add(final Key key) {
+        return this.storage.value(key)
+            .thenApply(PublisherAs::new)
+            .thenCompose(PublisherAs::bytes)
+            .thenCompose(
+                bytes -> {
+                    final Package pack = new JsonPackage(ByteSource.wrap(bytes));
+                    final Name name = pack.name();
+                    return CompletableFuture.allOf(
+                        this.packages().thenCompose(
+                            packages -> packages.add(pack)
+                                .save(this.storage, Repository.ALL_PACKAGES)
+                        ).toCompletableFuture(),
+                        this.packages(name).thenCompose(
+                            packages -> packages.add(pack)
+                                .save(this.storage, name.key())
+                        ).toCompletableFuture()
+                    ).thenCompose(
+                        ignored -> this.storage.delete(key)
+                    );
+                }
+            );
     }
 
     /**
@@ -107,17 +111,21 @@ public class Repository {
      *
      * @param key Content location in storage.
      * @return Packages found by name, might be empty.
-     * @throws InterruptedException In case the thread was interrupted.
      */
-    private Packages packages(final Key key) throws InterruptedException {
-        final BlockingStorage blocking = new BlockingStorage(this.storage);
-        final JsonPackages packages;
-        if (blocking.exists(key)) {
-            final ByteSource content = ByteSource.wrap(blocking.value(key));
-            packages = new JsonPackages(content);
-        } else {
-            packages = new JsonPackages();
-        }
-        return packages;
+    private CompletionStage<Packages> packages(final Key key) {
+        return this.storage.exists(key).thenCompose(
+            exists -> {
+                final CompletionStage<Packages> packages;
+                if (exists) {
+                    packages = this.storage.value(key)
+                        .thenApply(PublisherAs::new)
+                        .thenCompose(PublisherAs::bytes)
+                        .thenApply(bytes -> new JsonPackages(ByteSource.wrap(bytes)));
+                } else {
+                    packages = CompletableFuture.completedFuture(new JsonPackages());
+                }
+                return packages;
+            }
+        );
     }
 }

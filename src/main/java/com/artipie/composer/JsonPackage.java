@@ -26,6 +26,7 @@ package com.artipie.composer;
 
 import com.google.common.io.ByteSource;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -53,19 +54,21 @@ public final class JsonPackage implements Package {
     }
 
     @Override
-    public Name name() throws IOException {
+    public Name name() {
         return new Name(this.mandatoryString("name"));
     }
 
     @Override
-    public String version() throws IOException {
+    public String version() {
         return this.mandatoryString("version");
     }
 
     @Override
-    public JsonObject json() throws IOException {
+    public JsonObject json() {
         try (JsonReader reader = Json.createReader(this.content.openStream())) {
             return reader.readObject();
+        } catch (final IOException ex) {
+            throw new UncheckedIOException(ex);
         }
     }
 
@@ -74,9 +77,8 @@ public final class JsonPackage implements Package {
      *
      * @param name Attribute value.
      * @return String value.
-     * @throws IOException In case exception occurred on reading content.
      */
-    private String mandatoryString(final String name) throws IOException {
+    private String mandatoryString(final String name) {
         final JsonString string = this.json().getJsonString(name);
         if (string == null) {
             throw new IllegalStateException(String.format("Bad package, no '%s' found.", name));

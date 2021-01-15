@@ -58,7 +58,8 @@ class RepositoryPackagesTest {
     @Test
     void shouldLoadEmptyPackages() throws Exception {
         final Name name = new Name("foo/bar");
-        final Packages packages = new Repository(this.storage).packages(name);
+        final Packages packages = new Repository(this.storage).packages(name)
+            .toCompletableFuture().join();
         packages.save(this.storage, name.key()).get();
         MatcherAssert.assertThat(
             this.packages(name).keySet(),
@@ -71,7 +72,8 @@ class RepositoryPackagesTest {
         final Name name = new Name("foo/bar2");
         final byte[] bytes = "some data".getBytes();
         new BlockingStorage(this.storage).save(name.key(), bytes);
-        final Packages packages = new Repository(this.storage).packages(name);
+        final Packages packages = new Repository(this.storage).packages(name)
+            .toCompletableFuture().join();
         packages.save(this.storage, name.key()).get();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(name.key()),
@@ -81,7 +83,8 @@ class RepositoryPackagesTest {
 
     @Test
     void shouldLoadEmptyAllPackages() throws Exception {
-        final Packages packages = new Repository(this.storage).packages();
+        final Packages packages = new Repository(this.storage).packages()
+            .toCompletableFuture().join();
         packages.save(this.storage, new AllPackages()).get();
         MatcherAssert.assertThat(this.packages().keySet(), new IsEmptyCollection<>());
     }
@@ -90,7 +93,8 @@ class RepositoryPackagesTest {
     void shouldLoadNonEmptyAllPackages() throws Exception {
         final byte[] bytes = "all packages".getBytes();
         new BlockingStorage(this.storage).save(new AllPackages(), bytes);
-        final Packages packages = new Repository(this.storage).packages();
+        final Packages packages = new Repository(this.storage).packages()
+            .toCompletableFuture().join();
         packages.save(this.storage, new AllPackages()).get();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(new AllPackages()),
