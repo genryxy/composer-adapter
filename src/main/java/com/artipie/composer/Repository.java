@@ -24,10 +24,12 @@
 
 package com.artipie.composer;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
 import com.google.common.io.ByteSource;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -79,31 +81,34 @@ public class Repository {
     /**
      * Adds package described in JSON format from storage.
      *
-     * @param key Key to find content of package JSON.
+     * @param content Package content.
      * @return Completion of adding package to repository.
      */
-    public CompletableFuture<Void> add(final Key key) {
-        return this.storage.value(key)
-            .thenApply(PublisherAs::new)
-            .thenCompose(PublisherAs::bytes)
-            .thenCompose(
-                bytes -> {
-                    final Package pack = new JsonPackage(ByteSource.wrap(bytes));
-                    final Name name = pack.name();
-                    return CompletableFuture.allOf(
-                        this.packages().thenCompose(
-                            packages -> packages.add(pack)
-                                .save(this.storage, Repository.ALL_PACKAGES)
-                        ).toCompletableFuture(),
-                        this.packages(name).thenCompose(
-                            packages -> packages.add(pack)
-                                .save(this.storage, name.key())
-                        ).toCompletableFuture()
-                    ).thenCompose(
-                        ignored -> this.storage.delete(key)
-                    );
-                }
-            );
+    public CompletableFuture<Void> add(final Content content) {
+        final Key key = new Key.From(UUID.randomUUID().toString());
+        return this.storage.save(key, content).thenCompose(
+            saved -> this.storage.value(key)
+                .thenApply(PublisherAs::new)
+                .thenCompose(PublisherAs::bytes)
+                .thenCompose(
+                    bytes -> {
+                        final Package pack = new JsonPackage(ByteSource.wrap(bytes));
+                        final Name name = pack.name();
+                        return CompletableFuture.allOf(
+                            this.packages().thenCompose(
+                                packages -> packages.add(pack)
+                                    .save(this.storage, Repository.ALL_PACKAGES)
+                            ).toCompletableFuture(),
+                            this.packages(name).thenCompose(
+                                packages -> packages.add(pack)
+                                    .save(this.storage, name.key())
+                            ).toCompletableFuture()
+                        ).thenCompose(
+                            ignored -> this.storage.delete(key)
+                        );
+                    }
+                )
+        );
     }
 
     /**
