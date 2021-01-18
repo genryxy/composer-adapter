@@ -30,6 +30,7 @@ import com.artipie.asto.Storage;
 import com.google.common.io.ByteSource;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.concurrent.CompletableFuture;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -77,7 +78,7 @@ public final class JsonPackages implements Packages {
     }
 
     @Override
-    public Packages add(final Package pack) throws IOException {
+    public Packages add(final Package pack) {
         final JsonObject json = this.json();
         if (json.isNull(JsonPackages.ATTRIBUTE)) {
             throw new IllegalStateException("Bad content, no 'packages' object found");
@@ -118,11 +119,12 @@ public final class JsonPackages implements Packages {
      * Reads content as JSON object.
      *
      * @return JSON object.
-     * @throws IOException In case exception occurred on reading content.
      */
-    private JsonObject json() throws IOException {
+    private JsonObject json() {
         try (JsonReader reader = Json.createReader(this.content.openStream())) {
             return reader.readObject();
+        } catch (final IOException ex) {
+            throw new UncheckedIOException(ex);
         }
     }
 

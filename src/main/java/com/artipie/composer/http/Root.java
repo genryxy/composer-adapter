@@ -30,7 +30,6 @@ import com.artipie.composer.Repository;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -68,13 +67,7 @@ public final class Root implements Resource {
             .supplyAsync(() -> new Key.From(UUID.randomUUID().toString()))
             .thenCompose(
                 key -> this.storage.save(key, new Content.From(body)).thenCompose(
-                    ignored -> {
-                        try {
-                            return new Repository(this.storage).add(key);
-                        } catch (final IOException | InterruptedException ex) {
-                            throw new IllegalStateException(ex);
-                        }
-                    }
+                    ignored -> new Repository(this.storage).add(key)
                 ).thenCompose(
                     ignored -> new RsWithStatus(RsStatus.CREATED).send(connection)
                 )

@@ -26,7 +26,6 @@ package com.artipie.composer;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -40,9 +39,8 @@ public interface Packages {
      *
      * @param pack Package.
      * @return Updated packages.
-     * @throws IOException In case of any I/O problems.
      */
-    Packages add(Package pack) throws IOException;
+    Packages add(Package pack);
 
     /**
      * Saves packages registry binary content to storage.

@@ -24,7 +24,6 @@
 
 package com.artipie.composer;
 
-import java.io.IOException;
 import javax.json.JsonObject;
 
 /**
@@ -37,23 +36,20 @@ public interface Package {
      * Extract name from package.
      *
      * @return Package name.
-     * @throws IOException In case exception occurred on reading content.
      */
-    Name name() throws IOException;
+    Name name();
 
     /**
      * Extract version from package.
      *
      * @return Package version.
-     * @throws IOException In case exception occurred on reading content.
      */
-    String version() throws IOException;
+    String version();
 
     /**
      * Reads package content as JSON object.
      *
      * @return Package JSON object.
-     * @throws IOException In case exception occurred on reading content.
      */
-    JsonObject json() throws IOException;
+    JsonObject json();
 }
