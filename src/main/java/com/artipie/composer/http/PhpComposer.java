@@ -24,27 +24,18 @@
 package com.artipie.composer.http;
 
 import com.artipie.asto.Storage;
-import com.artipie.http.Response;
 import com.artipie.http.Slice;
-import com.artipie.http.rq.RequestLineFrom;
-import com.artipie.http.rq.RqMethod;
-import com.artipie.http.rs.RsStatus;
-import com.artipie.http.rs.RsWithStatus;
-import java.nio.ByteBuffer;
-import java.util.Map;
-import org.reactivestreams.Publisher;
+import com.artipie.http.rt.ByMethodsRule;
+import com.artipie.http.rt.RtRule;
+import com.artipie.http.rt.RtRulePath;
+import com.artipie.http.rt.SliceRoute;
 
 /**
  * PHP Composer repository HTTP front end.
  *
  * @since 0.1
  */
-public final class PhpComposer implements Slice {
-
-    /**
-     * Storage for packages.
-     */
-    private final Storage storage;
+public final class PhpComposer extends Slice.Wrap {
 
     /**
      * Ctor.
@@ -52,43 +43,26 @@ public final class PhpComposer implements Slice {
      * @param storage Storage for packages.
      */
     public PhpComposer(final Storage storage) {
-        this.storage = storage;
-    }
-
-    @Override
-    public Response response(
-        final String line,
-        final Iterable<Map.Entry<String, String>> headers,
-        final Publisher<ByteBuffer> body
-    ) {
-        final Response response;
-        final RequestLineFrom request = new RequestLineFrom(line);
-        final String path = request.uri().getPath();
-        final Resource resource = this.resource(path);
-        final RqMethod method = request.method();
-        if (method.equals(RqMethod.GET)) {
-            response = resource.get();
-        } else if (method.equals(RqMethod.PUT)) {
-            response = resource.put(body);
-        } else {
-            response = new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
-        }
-        return response;
-    }
-
-    /**
-     * Find resource by relative path.
-     *
-     * @param path Relative path.
-     * @return Resource found by path.
-     */
-    private Resource resource(final String path) {
-        final Resource resource;
-        if (path.equals("/")) {
-            resource = new Root(this.storage);
-        } else {
-            resource = new PackageMetadata(path, this.storage);
-        }
-        return resource;
+        super(
+            new SliceRoute(
+                new RtRulePath(
+                    new RtRule.All(
+                        new RtRule.Any(
+                            new RtRule.ByPath(PackageMetadataSlice.PACKAGE),
+                            new RtRule.ByPath(PackageMetadataSlice.ALL_PACKAGES)
+                        ),
+                        ByMethodsRule.Standard.GET
+                    ),
+                    new PackageMetadataSlice(storage)
+                ),
+                new RtRulePath(
+                    new RtRule.All(
+                        new RtRule.ByPath(AddSlice.PATH_PATTERN),
+                        ByMethodsRule.Standard.PUT
+                    ),
+                    new AddSlice(storage)
+                )
+            )
+        );
     }
 }

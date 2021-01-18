@@ -28,19 +28,28 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.composer.Repository;
 import com.artipie.http.Response;
+import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
 /**
- * Root resource. Used as endpoint to add a package.
+ * Slice for adding a package to the repository.
  *
- * @since 0.1
+ * @since 0.3
  */
-public final class Root implements Resource {
+public final class AddSlice implements Slice {
+
+    /**
+     * RegEx pattern for matching path.
+     */
+    public static final Pattern PATH_PATTERN = Pattern.compile("^/$");
 
     /**
      * Storage to put content into.
@@ -52,25 +61,26 @@ public final class Root implements Resource {
      *
      * @param storage Storage to read content from.
      */
-    public Root(final Storage storage) {
+    public AddSlice(final Storage storage) {
         this.storage = storage;
     }
 
     @Override
-    public Response get() {
-        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
-    }
-
-    @Override
-    public Response put(final Publisher<ByteBuffer> body) {
-        return connection -> CompletableFuture
-            .supplyAsync(() -> new Key.From(UUID.randomUUID().toString()))
-            .thenCompose(
+    public Response response(
+        final String line,
+        final Iterable<Map.Entry<String, String>> headers,
+        final Publisher<ByteBuffer> body
+    ) {
+        return new AsyncResponse(
+            CompletableFuture.supplyAsync(
+                () -> new Key.From(UUID.randomUUID().toString())
+            ).thenCompose(
                 key -> this.storage.save(key, new Content.From(body)).thenCompose(
-                    ignored -> new Repository(this.storage).add(key)
-                ).thenCompose(
-                    ignored -> new RsWithStatus(RsStatus.CREATED).send(connection)
+                    nothing -> new Repository(this.storage).add(key)
+                ).thenApply(
+                    nothing -> new RsWithStatus(RsStatus.CREATED)
                 )
-            );
+            )
+        );
     }
 }
