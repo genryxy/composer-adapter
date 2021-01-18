@@ -23,16 +23,10 @@
  */
 package com.artipie.composer;
 
-import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
-import java.io.ByteArrayInputStream;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,14 +50,11 @@ class RepositoryPackagesTest {
     }
 
     @Test
-    void shouldLoadEmptyPackages() throws Exception {
+    void shouldLoadEmptyPackages() {
         final Name name = new Name("foo/bar");
-        final Packages packages = new Repository(this.storage).packages(name)
-            .toCompletableFuture().join();
-        packages.save(this.storage, name.key()).get();
         MatcherAssert.assertThat(
-            this.packages(name).keySet(),
-            new IsEmptyCollection<>()
+            new Repository(this.storage).packages(name).toCompletableFuture().join().isPresent(),
+            new IsEqual<>(false)
         );
     }
 
@@ -72,9 +63,8 @@ class RepositoryPackagesTest {
         final Name name = new Name("foo/bar2");
         final byte[] bytes = "some data".getBytes();
         new BlockingStorage(this.storage).save(name.key(), bytes);
-        final Packages packages = new Repository(this.storage).packages(name)
-            .toCompletableFuture().join();
-        packages.save(this.storage, name.key()).get();
+        new Repository(this.storage).packages(name).toCompletableFuture().join().get()
+            .save(this.storage, name.key()).join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(name.key()),
             new IsEqual<>(bytes)
@@ -82,40 +72,22 @@ class RepositoryPackagesTest {
     }
 
     @Test
-    void shouldLoadEmptyAllPackages() throws Exception {
-        final Packages packages = new Repository(this.storage).packages()
-            .toCompletableFuture().join();
-        packages.save(this.storage, new AllPackages()).get();
-        MatcherAssert.assertThat(this.packages().keySet(), new IsEmptyCollection<>());
+    void shouldLoadEmptyAllPackages() {
+        MatcherAssert.assertThat(
+            new Repository(this.storage).packages().toCompletableFuture().join().isPresent(),
+            new IsEqual<>(false)
+        );
     }
 
     @Test
     void shouldLoadNonEmptyAllPackages() throws Exception {
         final byte[] bytes = "all packages".getBytes();
         new BlockingStorage(this.storage).save(new AllPackages(), bytes);
-        final Packages packages = new Repository(this.storage).packages()
-            .toCompletableFuture().join();
-        packages.save(this.storage, new AllPackages()).get();
+        new Repository(this.storage).packages().toCompletableFuture().join().get()
+            .save(this.storage, new AllPackages()).join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(new AllPackages()),
             new IsEqual<>(bytes)
         );
-    }
-
-    private JsonObject packages() throws Exception {
-        return this.packages(new AllPackages());
-    }
-
-    private JsonObject packages(final Name name) throws Exception {
-        return this.packages(name.key());
-    }
-
-    private JsonObject packages(final Key key) throws Exception {
-        final JsonObject saved;
-        final byte[] bytes = new BlockingStorage(this.storage).value(key);
-        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
-            saved = reader.readObject();
-        }
-        return saved.getJsonObject("packages");
     }
 }

@@ -29,6 +29,7 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
 import com.google.common.io.ByteSource;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -64,7 +65,7 @@ public class Repository {
      *
      * @return Packages found by name, might be empty.
      */
-    public CompletionStage<Packages> packages() {
+    public CompletionStage<Optional<Packages>> packages() {
         return this.packages(Repository.ALL_PACKAGES);
     }
 
@@ -74,7 +75,7 @@ public class Repository {
      * @param name Package name.
      * @return Packages found by name, might be empty.
      */
-    public CompletionStage<Packages> packages(final Name name) {
+    public CompletionStage<Optional<Packages>> packages(final Name name) {
         return this.packages(name.key());
     }
 
@@ -96,11 +97,11 @@ public class Repository {
                         final Name name = pack.name();
                         return CompletableFuture.allOf(
                             this.packages().thenCompose(
-                                packages -> packages.add(pack)
+                                packages -> packages.orElse(new JsonPackages()).add(pack)
                                     .save(this.storage, Repository.ALL_PACKAGES)
                             ).toCompletableFuture(),
                             this.packages(name).thenCompose(
-                                packages -> packages.add(pack)
+                                packages -> packages.orElse(new JsonPackages()).add(pack)
                                     .save(this.storage, name.key())
                             ).toCompletableFuture()
                         ).thenCompose(
@@ -117,17 +118,18 @@ public class Repository {
      * @param key Content location in storage.
      * @return Packages found by name, might be empty.
      */
-    private CompletionStage<Packages> packages(final Key key) {
+    private CompletionStage<Optional<Packages>> packages(final Key key) {
         return this.storage.exists(key).thenCompose(
             exists -> {
-                final CompletionStage<Packages> packages;
+                final CompletionStage<Optional<Packages>> packages;
                 if (exists) {
                     packages = this.storage.value(key)
                         .thenApply(PublisherAs::new)
                         .thenCompose(PublisherAs::bytes)
-                        .thenApply(bytes -> new JsonPackages(ByteSource.wrap(bytes)));
+                        .thenApply(bytes -> new JsonPackages(ByteSource.wrap(bytes)))
+                        .thenApply(Optional::of);
                 } else {
-                    packages = CompletableFuture.completedFuture(new JsonPackages());
+                    packages = CompletableFuture.completedFuture(Optional.empty());
                 }
                 return packages;
             }

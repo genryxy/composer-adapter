@@ -53,7 +53,7 @@ public final class JsonPackages implements Packages {
     /**
      * Packages registry content.
      */
-    private final ByteSource content;
+    private final ByteSource source;
 
     /**
      * Ctor.
@@ -71,10 +71,10 @@ public final class JsonPackages implements Packages {
     /**
      * Ctor.
      *
-     * @param content Packages registry content.
+     * @param source Packages registry content.
      */
-    public JsonPackages(final ByteSource content) {
-        this.content = content;
+    public JsonPackages(final ByteSource source) {
+        this.source = source;
     }
 
     @Override
@@ -106,13 +106,18 @@ public final class JsonPackages implements Packages {
 
     @Override
     public CompletableFuture<Void> save(final Storage storage, final Key key) {
+        return storage.save(key, this.content());
+    }
+
+    @Override
+    public Content content() {
         final byte[] bytes;
         try {
-            bytes = this.content.read();
+            bytes = this.source.read();
         } catch (final IOException ex) {
-            throw new IllegalStateException("Failed to read content", ex);
+            throw new UncheckedIOException("Failed to read content", ex);
         }
-        return storage.save(key, new Content.From(bytes));
+        return new Content.From(bytes);
     }
 
     /**
@@ -121,7 +126,7 @@ public final class JsonPackages implements Packages {
      * @return JSON object.
      */
     private JsonObject json() {
-        try (JsonReader reader = Json.createReader(this.content.openStream())) {
+        try (JsonReader reader = Json.createReader(this.source.openStream())) {
             return reader.readObject();
         } catch (final IOException ex) {
             throw new UncheckedIOException(ex);

@@ -23,7 +23,6 @@
  */
 package com.artipie.composer.http;
 
-import com.artipie.asto.Storage;
 import com.artipie.composer.Repository;
 import com.artipie.http.Slice;
 import com.artipie.http.rt.ByMethodsRule;
@@ -42,9 +41,9 @@ public final class PhpComposer extends Slice.Wrap {
     /**
      * Ctor.
      *
-     * @param storage Storage for packages.
+     * @param repository Repository.
      */
-    public PhpComposer(final Storage storage) {
+    public PhpComposer(final Repository repository) {
         super(
             new SliceRoute(
                 new RtRulePath(
@@ -55,14 +54,14 @@ public final class PhpComposer extends Slice.Wrap {
                         ),
                         ByMethodsRule.Standard.GET
                     ),
-                    new PackageMetadataSlice(storage)
+                    new PackageMetadataSlice(repository)
                 ),
                 new RtRulePath(
                     new RtRule.All(
                         new RtRule.ByPath(AddSlice.PATH_PATTERN),
                         ByMethodsRule.Standard.PUT
                     ),
-                    new AddSlice(new Repository(storage))
+                    new AddSlice(repository)
                 )
             )
         );
