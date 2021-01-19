@@ -23,6 +23,7 @@
  */
 package com.artipie.composer;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
@@ -31,6 +32,7 @@ import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -38,6 +40,7 @@ import javax.json.JsonWriter;
 import org.cactoos.io.ResourceOf;
 import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +75,7 @@ class RepositoryAddTest {
 
     @Test
     void shouldAddPackageToAll() throws Exception {
-        new Repository(this.storage).add(this.savePackage()).get();
+        new Repository(this.storage).add(this.packageJson()).get();
         final Name name = this.pack.name();
         MatcherAssert.assertThat(
             this.packages().getJsonObject(name.string()).keySet(),
@@ -86,8 +89,7 @@ class RepositoryAddTest {
             new AllPackages(),
             "{\"packages\":{\"vendor/package\":{\"2.0\":{}}}}".getBytes()
         );
-        final Key.From key = this.savePackage();
-        new Repository(this.storage).add(key).get();
+        new Repository(this.storage).add(this.packageJson()).get();
         MatcherAssert.assertThat(
             this.packages().getJsonObject("vendor/package").keySet(),
             new IsEqual<>(new SetOf<>("2.0", this.pack.version()))
@@ -96,8 +98,7 @@ class RepositoryAddTest {
 
     @Test
     void shouldAddPackage() throws Exception {
-        final Key.From key = this.savePackage();
-        new Repository(this.storage).add(key).get();
+        new Repository(this.storage).add(this.packageJson()).get();
         final Name name = this.pack.name();
         MatcherAssert.assertThat(
             "Package with correct version should present in packages after being added",
@@ -113,8 +114,7 @@ class RepositoryAddTest {
             name.key(),
             "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}".getBytes()
         );
-        final Key.From key = this.savePackage();
-        new Repository(this.storage).add(key).get();
+        new Repository(this.storage).add(this.packageJson()).get();
         MatcherAssert.assertThat(
             // @checkstyle LineLengthCheck (1 line)
             "Package with both new and old versions should present in packages after adding new version",
@@ -125,11 +125,12 @@ class RepositoryAddTest {
 
     @Test
     void shouldDeleteSourceAfterAdding() throws Exception {
-        final Key.From source = this.savePackage();
-        new Repository(this.storage).add(source).get();
+        new Repository(this.storage).add(this.packageJson()).get();
         MatcherAssert.assertThat(
-            this.storage.exists(source).get(),
-            new IsEqual<>(false)
+            this.storage.list(Key.ROOT).join().stream()
+                .map(Key::string)
+                .collect(Collectors.toList()),
+            Matchers.contains("packages.json", "vendor/package.json")
         );
     }
 
@@ -150,7 +151,7 @@ class RepositoryAddTest {
         return saved.getJsonObject("packages");
     }
 
-    private Key.From savePackage() throws Exception {
+    private Content packageJson() throws Exception {
         final byte[] bytes;
         try (ByteArrayOutputStream out = new ByteArrayOutputStream();
             JsonWriter writer = Json.createWriter(out)) {
@@ -158,8 +159,6 @@ class RepositoryAddTest {
             out.flush();
             bytes = out.toByteArray();
         }
-        final Key.From key = new Key.From("pack");
-        new BlockingStorage(this.storage).save(key, bytes);
-        return key;
+        return new Content.From(bytes);
     }
 }

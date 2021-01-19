@@ -24,8 +24,6 @@
 package com.artipie.composer.http;
 
 import com.artipie.asto.Content;
-import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
 import com.artipie.composer.Repository;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
@@ -34,8 +32,6 @@ import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
@@ -52,17 +48,17 @@ public final class AddSlice implements Slice {
     public static final Pattern PATH_PATTERN = Pattern.compile("^/$");
 
     /**
-     * Storage to put content into.
+     * Repository.
      */
-    private final Storage storage;
+    private final Repository repository;
 
     /**
      * Ctor.
      *
-     * @param storage Storage to read content from.
+     * @param repository Repository.
      */
-    public AddSlice(final Storage storage) {
-        this.storage = storage;
+    public AddSlice(final Repository repository) {
+        this.repository = repository;
     }
 
     @Override
@@ -72,14 +68,8 @@ public final class AddSlice implements Slice {
         final Publisher<ByteBuffer> body
     ) {
         return new AsyncResponse(
-            CompletableFuture.supplyAsync(
-                () -> new Key.From(UUID.randomUUID().toString())
-            ).thenCompose(
-                key -> this.storage.save(key, new Content.From(body)).thenCompose(
-                    nothing -> new Repository(this.storage).add(key)
-                ).thenApply(
-                    nothing -> new RsWithStatus(RsStatus.CREATED)
-                )
+            this.repository.add(new Content.From(body)).thenApply(
+                nothing -> new RsWithStatus(RsStatus.CREATED)
             )
         );
     }

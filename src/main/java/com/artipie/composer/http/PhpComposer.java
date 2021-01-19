@@ -24,6 +24,7 @@
 package com.artipie.composer.http;
 
 import com.artipie.asto.Storage;
+import com.artipie.composer.Repository;
 import com.artipie.http.Slice;
 import com.artipie.http.rt.ByMethodsRule;
 import com.artipie.http.rt.RtRule;
@@ -34,6 +35,7 @@ import com.artipie.http.rt.SliceRoute;
  * PHP Composer repository HTTP front end.
  *
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 public final class PhpComposer extends Slice.Wrap {
 
@@ -60,7 +62,7 @@ public final class PhpComposer extends Slice.Wrap {
                         new RtRule.ByPath(AddSlice.PATH_PATTERN),
                         ByMethodsRule.Standard.PUT
                     ),
-                    new AddSlice(storage)
+                    new AddSlice(new Repository(storage))
                 )
             )
         );
