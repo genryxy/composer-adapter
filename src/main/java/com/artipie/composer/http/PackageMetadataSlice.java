@@ -27,40 +27,38 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.composer.AllPackages;
 import com.artipie.composer.Name;
-import com.artipie.http.Headers;
 import com.artipie.http.Response;
+import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
+import com.artipie.http.rq.RequestLineFrom;
 import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.RsWithStatus;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
 /**
- * Package metadata resource.
+ * Slice that serves package metadata.
  *
- * @since 0.1
+ * @since 0.3
  */
-public final class PackageMetadata implements Resource {
+public final class PackageMetadataSlice implements Slice {
 
     /**
-     * Key to all packages.
+     * RegEx pattern for package metadata path.
      */
-    public static final Key ALL_PACKAGES = new AllPackages();
-
-    /**
-     * RegEx pattern for matching path.
-     */
-    private static final Pattern PATH_PATTERN = Pattern.compile(
+    public static final Pattern PACKAGE = Pattern.compile(
         "/p/(?<vendor>[^/]+)/(?<package>[^/]+)\\.json$"
     );
 
     /**
-     * Resource path.
+     * RegEx pattern for all packages metadata path.
      */
-    private final String path;
+    public static final Pattern ALL_PACKAGES = Pattern.compile("^/packages.json$");
 
     /**
      * Storage to read content from.
@@ -70,59 +68,56 @@ public final class PackageMetadata implements Resource {
     /**
      * Ctor.
      *
-     * @param path Resource path.
      * @param storage Storage to read content from.
      */
-    public PackageMetadata(final String path, final Storage storage) {
-        this.path = path;
+    public PackageMetadataSlice(final Storage storage) {
         this.storage = storage;
     }
 
     @Override
-    public Response put(final Publisher<ByteBuffer> body) {
-        return new RsWithStatus(RsStatus.METHOD_NOT_ALLOWED);
-    }
-
-    @Override
-    public Response get() {
-        return connection -> CompletableFuture.supplyAsync(PackageMetadata.this::key)
-            .thenCompose(
-                key -> this.storage.exists(key).thenCompose(
+    public Response response(
+        final String line,
+        final Iterable<Map.Entry<String, String>> headers,
+        final Publisher<ByteBuffer> body
+    ) {
+        return new AsyncResponse(
+            CompletableFuture.supplyAsync(
+                () -> key(new RequestLineFrom(line).uri().getPath())
+            ).thenCompose(
+                key -> this.storage.exists(key).thenApply(
                     exists -> {
-                        final CompletionStage<Void> sent;
+                        final Response response;
                         if (exists) {
-                            sent = this.storage.value(key).thenCompose(
-                                data -> connection.accept(
-                                    RsStatus.OK,
-                                    Headers.EMPTY,
-                                    data
-                                )
+                            response = new AsyncResponse(
+                                this.storage.value(key).thenApply(RsWithBody::new)
                             );
                         } else {
-                            sent = new RsWithStatus(RsStatus.NOT_FOUND).send(connection);
+                            response = new RsWithStatus(RsStatus.NOT_FOUND);
                         }
-                        return sent;
+                        return response;
                     }
                 )
-            );
+            )
+        );
     }
 
     /**
      * Builds key to storage value from path.
      *
+     * @param path Resource path.
      * @return Key to storage value.
      */
-    private Key key() {
+    private static Key key(final String path) {
         final Key key;
-        final Matcher matcher = PATH_PATTERN.matcher(this.path);
+        final Matcher matcher = PACKAGE.matcher(path);
         if (matcher.find()) {
             key = new Name(
                 String.format("%s/%s", matcher.group("vendor"), matcher.group("package"))
             ).key();
-        } else if (this.path.equals(String.format("/%s", PackageMetadata.ALL_PACKAGES.string()))) {
-            key = PackageMetadata.ALL_PACKAGES;
+        } else if (ALL_PACKAGES.matcher(path).matches()) {
+            key = new AllPackages();
         } else {
-            throw new IllegalStateException(String.format("Unexpected path: %s", this.path));
+            throw new IllegalStateException(String.format("Unexpected path: %s", path));
         }
         return key;
     }

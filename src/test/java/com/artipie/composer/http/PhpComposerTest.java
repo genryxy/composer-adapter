@@ -44,8 +44,6 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Tests for {@link PhpComposer}.
@@ -117,21 +115,6 @@ class PhpComposerTest {
         );
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"PUT", "HEAD", "DELETE", "PATCH"})
-    void shouldRespondMethodNotAllowedForPackageMetadata(final RqMethod method) {
-        final Response response = this.php.response(
-            new RequestLine(method, "/p/vendor/package.json").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            "Package metadata cannot be put",
-            response,
-            new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
-        );
-    }
-
     @Test
     void shouldGetAllPackages() throws Exception {
         final byte[] data = "all packages".getBytes();
@@ -180,20 +163,6 @@ class PhpComposerTest {
             "Package should be created by put",
             response,
             new RsHasStatus(RsStatus.CREATED)
-        );
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"GET", "HEAD", "DELETE", "PATCH"})
-    void shouldRespondMethodNotAllowedForRoot(final RqMethod method) {
-        final Response response = this.php.response(
-            new RequestLine(method, "/").toString(),
-            Collections.emptyList(),
-            Flowable.empty()
-        );
-        MatcherAssert.assertThat(
-            response,
-            new RsHasStatus(RsStatus.METHOD_NOT_ALLOWED)
         );
     }
 }
