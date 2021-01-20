@@ -32,12 +32,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link Repository#packages()} and {@link Repository#packages(Name)}.
+ * Tests for {@link AstoRepository#packages()} and {@link AstoRepository#packages(Name)}.
  *
- * @since 0.1
+ * @since 0.3
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
-class RepositoryPackagesTest {
+class AstoRepositoryPackagesTest {
 
     /**
      * Storage used in tests.
@@ -53,7 +53,9 @@ class RepositoryPackagesTest {
     void shouldLoadEmptyPackages() {
         final Name name = new Name("foo/bar");
         MatcherAssert.assertThat(
-            new Repository(this.storage).packages(name).toCompletableFuture().join().isPresent(),
+            new AstoRepository(this.storage).packages(name)
+                .toCompletableFuture().join()
+                .isPresent(),
             new IsEqual<>(false)
         );
     }
@@ -63,7 +65,7 @@ class RepositoryPackagesTest {
         final Name name = new Name("foo/bar2");
         final byte[] bytes = "some data".getBytes();
         new BlockingStorage(this.storage).save(name.key(), bytes);
-        new Repository(this.storage).packages(name).toCompletableFuture().join().get()
+        new AstoRepository(this.storage).packages(name).toCompletableFuture().join().get()
             .save(this.storage, name.key()).join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(name.key()),
@@ -74,7 +76,7 @@ class RepositoryPackagesTest {
     @Test
     void shouldLoadEmptyAllPackages() {
         MatcherAssert.assertThat(
-            new Repository(this.storage).packages().toCompletableFuture().join().isPresent(),
+            new AstoRepository(this.storage).packages().toCompletableFuture().join().isPresent(),
             new IsEqual<>(false)
         );
     }
@@ -83,7 +85,7 @@ class RepositoryPackagesTest {
     void shouldLoadNonEmptyAllPackages() throws Exception {
         final byte[] bytes = "all packages".getBytes();
         new BlockingStorage(this.storage).save(new AllPackages(), bytes);
-        new Repository(this.storage).packages().toCompletableFuture().join().get()
+        new AstoRepository(this.storage).packages().toCompletableFuture().join().get()
             .save(this.storage, new AllPackages()).join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(new AllPackages()),

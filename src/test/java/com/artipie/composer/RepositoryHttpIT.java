@@ -95,7 +95,7 @@ class RepositoryHttpIT {
         this.ensureComposerInstalled();
         this.server = new VertxSliceServer(
             this.vertx,
-            new PhpComposer(new Repository(new InMemoryStorage()))
+            new PhpComposer(new AstoRepository(new InMemoryStorage()))
         );
         final int port = this.server.start();
         this.url = String.format("http://localhost:%s", port);
