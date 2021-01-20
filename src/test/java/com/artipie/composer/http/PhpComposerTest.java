@@ -28,6 +28,7 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.AllPackages;
+import com.artipie.composer.Repository;
 import com.artipie.http.Response;
 import com.artipie.http.hm.RsHasBody;
 import com.artipie.http.hm.RsHasStatus;
@@ -74,7 +75,7 @@ class PhpComposerTest {
     @BeforeEach
     void init() {
         this.storage = new InMemoryStorage();
-        this.php = new PhpComposer(this.storage);
+        this.php = new PhpComposer(new Repository(this.storage));
     }
 
     @Test

@@ -24,6 +24,7 @@
 
 package com.artipie.composer;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import java.util.concurrent.CompletableFuture;
@@ -50,4 +51,11 @@ public interface Packages {
      * @return Completion of saving.
      */
     CompletableFuture<Void> save(Storage storage, Key key);
+
+    /**
+     * Reads packages registry binary content.
+     *
+     * @return Content.
+     */
+    Content content();
 }
