@@ -32,7 +32,7 @@ import java.util.concurrent.CompletionStage;
 /**
  * PHP Composer repository.
  *
- * @since 0.1
+ * @since 0.3
  */
 public interface Repository {
 
