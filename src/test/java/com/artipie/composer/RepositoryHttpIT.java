@@ -68,6 +68,13 @@ import org.testcontainers.containers.GenericContainer;
 @DisabledOnOs(OS.WINDOWS)
 class RepositoryHttpIT {
     /**
+     * Temporary directory.
+     * @checkstyle VisibilityModifierCheck (5 lines)
+     */
+    @TempDir
+    Path temp;
+
+    /**
      * Vert.x instance to use in tests.
      */
     private Vertx vertx;
@@ -103,9 +110,9 @@ class RepositoryHttpIT {
     private int sourceport;
 
     @BeforeEach
-    void setUp(@TempDir final Path temp) {
+    void setUp() {
         this.vertx = Vertx.vertx();
-        this.project = temp.resolve("project");
+        this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.server = new VertxSliceServer(
             this.vertx,
