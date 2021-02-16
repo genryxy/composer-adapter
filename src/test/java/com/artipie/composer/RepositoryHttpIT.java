@@ -26,7 +26,7 @@ package com.artipie.composer;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.fs.FileStorage;
+import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.http.PhpComposer;
 import com.artipie.files.FilesSlice;
 import com.artipie.http.misc.RandomFreePort;
@@ -69,6 +69,13 @@ import org.testcontainers.containers.GenericContainer;
 @DisabledOnOs(OS.WINDOWS)
 class RepositoryHttpIT {
     /**
+     * Temporary directory.
+     * @checkstyle VisibilityModifierCheck (5 lines)
+     */
+    @TempDir
+    Path temp;
+
+    /**
      * Vert.x instance to use in tests.
      */
     private Vertx vertx;
@@ -109,13 +116,13 @@ class RepositoryHttpIT {
     private int sourceport;
 
     @BeforeEach
-    void setUp(@TempDir final Path temp) {
+    void setUp() {
         this.vertx = Vertx.vertx();
-        this.project = temp.resolve("project");
+        this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.server = new VertxSliceServer(
             this.vertx,
-            new LoggingSlice(new PhpComposer(new AstoRepository(new FileStorage(temp))))
+            new LoggingSlice(new PhpComposer(new AstoRepository(new InMemoryStorage())))
         );
         this.port = this.server.start();
         this.sourceport = new RandomFreePort().get();
@@ -197,7 +204,7 @@ class RepositoryHttpIT {
     }
 
     private String upload(final byte[] content, final int freeport) throws Exception {
-        final Storage files = new FileStorage(this.project);
+        final Storage files = new InMemoryStorage();
         final String name = UUID.randomUUID().toString();
         new BlockingStorage(files).save(new Key.From(name), content);
         this.sourceserver = new VertxSliceServer(
