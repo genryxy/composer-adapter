@@ -24,8 +24,9 @@
 package com.artipie.composer;
 
 import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.asto.fs.FileStorage;
 import com.artipie.composer.http.PhpComposer;
 import com.artipie.files.FilesSlice;
 import com.artipie.http.misc.RandomFreePort;
@@ -114,7 +115,7 @@ class RepositoryHttpIT {
         this.project.toFile().mkdirs();
         this.server = new VertxSliceServer(
             this.vertx,
-            new LoggingSlice(new PhpComposer(new AstoRepository(new InMemoryStorage())))
+            new LoggingSlice(new PhpComposer(new AstoRepository(new FileStorage(temp))))
         );
         this.port = this.server.start();
         this.sourceport = new RandomFreePort().get();
@@ -196,7 +197,7 @@ class RepositoryHttpIT {
     }
 
     private String upload(final byte[] content, final int freeport) throws Exception {
-        final InMemoryStorage files = new InMemoryStorage();
+        final Storage files = new FileStorage(this.project);
         final String name = UUID.randomUUID().toString();
         new BlockingStorage(files).save(new Key.From(name), content);
         this.sourceserver = new VertxSliceServer(
@@ -235,9 +236,9 @@ class RepositoryHttpIT {
 
     private static byte[] emptyZip() throws Exception {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zip = new ZipOutputStream(bos);
-        zip.putNextEntry(new ZipEntry("whatever"));
-        zip.close();
+        try (ZipOutputStream zip = new ZipOutputStream(bos)) {
+            zip.putNextEntry(new ZipEntry("whatever"));
+        }
         return bos.toByteArray();
     }
 }
