@@ -141,8 +141,8 @@ class RepositoryHttpIT {
         if (this.sourceserver != null) {
             this.sourceserver.stop();
         }
-        this.vertx.close();
         this.server.stop();
+        this.vertx.close();
         this.cntn.stop();
     }
 
