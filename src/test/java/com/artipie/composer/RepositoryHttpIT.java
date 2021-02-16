@@ -54,10 +54,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
  * Integration test for PHP Composer repository.
@@ -69,10 +69,8 @@ import org.testcontainers.containers.GenericContainer;
 class RepositoryHttpIT {
     /**
      * Temporary directory.
-     * @checkstyle VisibilityModifierCheck (5 lines)
      */
-    @TempDir
-    Path temp;
+    private Path temp;
 
     /**
      * Vert.x instance to use in tests.
@@ -110,7 +108,8 @@ class RepositoryHttpIT {
     private int sourceport;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
+        this.temp = Files.createTempDirectory("");
         this.vertx = Vertx.vertx();
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
@@ -138,6 +137,11 @@ class RepositoryHttpIT {
             this.vertx.close();
         }
         this.cntn.stop();
+        try {
+            FileUtils.cleanDirectory(this.temp.toFile());
+        } catch (final IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Test
