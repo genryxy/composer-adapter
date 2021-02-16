@@ -28,12 +28,14 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.http.PhpComposer;
 import com.artipie.files.FilesSlice;
+import com.artipie.http.misc.RandomFreePort;
+import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
-import com.google.common.collect.ImmutableList;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
@@ -50,7 +52,12 @@ import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.Testcontainers;
+import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
 
 /**
  * Integration test for PHP Composer repository.
@@ -58,15 +65,8 @@ import org.junit.jupiter.api.io.TempDir;
  * @since 0.1
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
+@DisabledOnOs(OS.WINDOWS)
 class RepositoryHttpIT {
-
-    // @checkstyle VisibilityModifierCheck (5 lines)
-    /**
-     * Temporary directory.
-     */
-    @TempDir
-    Path temp;
-
     /**
      * Vert.x instance to use in tests.
      */
@@ -87,18 +87,39 @@ class RepositoryHttpIT {
      */
     private String url;
 
+    /**
+     * Test container.
+     */
+    private GenericContainer<?> cntn;
+
+    /**
+     * Server port.
+     */
+    private int port;
+
+    /**
+     * Source port for tgz archive.
+     */
+    private int sourceport;
+
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp(@TempDir final Path temp) {
         this.vertx = Vertx.vertx();
-        this.project = this.temp.resolve("project");
+        this.project = temp.resolve("project");
         this.project.toFile().mkdirs();
-        this.ensureComposerInstalled();
         this.server = new VertxSliceServer(
             this.vertx,
-            new PhpComposer(new AstoRepository(new InMemoryStorage()))
+            new LoggingSlice(new PhpComposer(new AstoRepository(new InMemoryStorage())))
         );
-        final int port = this.server.start();
-        this.url = String.format("http://localhost:%s", port);
+        this.port = this.server.start();
+        this.sourceport = new RandomFreePort().get();
+        Testcontainers.exposeHostPorts(this.port, this.sourceport);
+        this.cntn = new GenericContainer<>("composer:2.0.9")
+            .withCommand("tail", "-f", "/dev/null")
+            .withWorkingDirectory("/home/")
+            .withFileSystemBind(this.project.toString(), "/home");
+        this.cntn.start();
+        this.url = String.format("http://host.testcontainers.internal:%s", this.port);
     }
 
     @AfterEach
@@ -109,6 +130,7 @@ class RepositoryHttpIT {
         if (this.vertx != null) {
             this.vertx.close();
         }
+        this.cntn.stop();
     }
 
     @Test
@@ -120,28 +142,15 @@ class RepositoryHttpIT {
                 .add(
                     "dist",
                     Json.createObjectBuilder()
-                        .add("url", this.upload(RepositoryHttpIT.emptyZip()))
+                        .add("url", this.upload(RepositoryHttpIT.emptyZip(), this.sourceport))
                         .add("type", "zip")
                 )
                 .build()
                 .toString()
         );
-        Files.write(
-            this.project.resolve("composer.json"),
-            String.join(
-                "",
-                "{",
-                "\"config\":{ \"secure-http\": false },",
-                "\"repositories\": [",
-                String.format("{\"type\": \"composer\", \"url\": \"%s\"},", this.url),
-                "{\"packagist.org\": false} ",
-                "],",
-                "\"require\": { \"vendor/package\": \"1.1.2\" }",
-                "}"
-            ).getBytes()
-        );
+        this.writeComposer();
         MatcherAssert.assertThat(
-            this.run("install"),
+            this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
                 new ListOf<Matcher<? super String>>(
                     new StringContains(false, "Installs: vendor/package:1.1.2"),
@@ -158,7 +167,9 @@ class RepositoryHttpIT {
     private void addPackage(final String pack) throws Exception {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(this.url).openConnection();
+            conn = (HttpURLConnection) new URL(
+                String.format("http://localhost:%s", this.port)
+            ).openConnection();
             conn.setRequestMethod("PUT");
             conn.setDoInput(true);
             conn.setDoOutput(true);
@@ -179,55 +190,41 @@ class RepositoryHttpIT {
         }
     }
 
-    private String upload(final byte[] content) throws Exception {
+    private String upload(final byte[] content, final int freeport) throws Exception {
         final InMemoryStorage files = new InMemoryStorage();
         final String name = UUID.randomUUID().toString();
         new BlockingStorage(files).save(new Key.From(name), content);
-        final int port = new VertxSliceServer(this.vertx, new FilesSlice(files)).start();
-        return String.format("http://localhost:%d/%s", port, name);
+        new VertxSliceServer(
+            this.vertx, new LoggingSlice(new FilesSlice(files)), freeport
+        ).start();
+        return String.format("http://host.testcontainers.internal:%d/%s", freeport, name);
     }
 
-    private void ensureComposerInstalled() throws Exception {
-        final String output = this.run("--version");
-        if (!output.startsWith("Composer version")) {
-            throw new IllegalStateException("Composer not installed");
-        }
-    }
-
-    private String run(final String... args) throws Exception {
-        final Path stdout = this.temp.resolve(
-            String.format("%s-stdout.txt", UUID.randomUUID().toString())
+    private String exec(final String... command) throws Exception {
+        Logger.debug(this, "Command:\n%s\n", String.join(" ", command));
+        final Container.ExecResult res = this.cntn.execInContainer(command);
+        final String log = String.format(
+            "STDOUT:\n%s\nSTDERR:\n%s", res.getStdout(), res.getStderr()
         );
-        final int code = new ProcessBuilder()
-            .directory(this.project.toFile())
-            .command(
-                ImmutableList.<String>builder()
-                    .add(RepositoryHttpIT.command())
-                    .add(args)
-                    .add("--verbose")
-                    .add("--no-cache")
-                    .build()
-            )
-            .redirectOutput(stdout.toFile())
-            .redirectErrorStream(true)
-            .start()
-            .waitFor();
-        final String log = new String(Files.readAllBytes(stdout));
-        Logger.debug(this, "Full stdout/stderr:\n%s", log);
-        if (code != 0) {
-            throw new IllegalStateException(String.format("Not OK exit code: %d", code));
-        }
+        Logger.debug(this, log);
         return log;
     }
 
-    private static String command() {
-        final String cmd;
-        if (System.getProperty("os.name").startsWith("Windows")) {
-            cmd = "composer.bat";
-        } else {
-            cmd = "composer";
-        }
-        return cmd;
+    private void writeComposer() throws IOException {
+        Files.write(
+            this.project.resolve("composer.json"),
+            String.join(
+                "",
+                "{",
+                "\"config\":{ \"secure-http\": false },",
+                "\"repositories\": [",
+                String.format("{\"type\": \"composer\", \"url\": \"%s\"},", this.url),
+                "{\"packagist.org\": false} ",
+                "],",
+                "\"require\": { \"vendor/package\": \"1.1.2\" }",
+                "}"
+            ).getBytes()
+        );
     }
 
     private static byte[] emptyZip() throws Exception {
