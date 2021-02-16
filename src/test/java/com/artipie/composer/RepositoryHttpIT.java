@@ -54,10 +54,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
  * Integration test for PHP Composer repository.
@@ -67,11 +67,6 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
  */
 @DisabledOnOs(OS.WINDOWS)
 class RepositoryHttpIT {
-    /**
-     * Temporary directory.
-     */
-    private Path temp;
-
     /**
      * Vert.x instance to use in tests.
      */
@@ -86,6 +81,11 @@ class RepositoryHttpIT {
      * HTTP server hosting repository.
      */
     private VertxSliceServer server;
+
+    /**
+     * HTTP source server.
+     */
+    private VertxSliceServer sourceserver;
 
     /**
      * Repository URL.
@@ -108,10 +108,9 @@ class RepositoryHttpIT {
     private int sourceport;
 
     @BeforeEach
-    void setUp() throws IOException {
-        this.temp = Files.createTempDirectory("");
+    void setUp(@TempDir final Path temp) {
         this.vertx = Vertx.vertx();
-        this.project = this.temp.resolve("project");
+        this.project = temp.resolve("project");
         this.project.toFile().mkdirs();
         this.server = new VertxSliceServer(
             this.vertx,
@@ -131,18 +130,12 @@ class RepositoryHttpIT {
     @AfterEach
     @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
-        if (this.server != null) {
-            this.server.stop();
+        if (this.sourceserver != null) {
+            this.sourceserver.stop();
         }
-        if (this.vertx != null) {
-            this.vertx.close();
-        }
+        this.vertx.close();
+        this.server.stop();
         this.cntn.stop();
-        try {
-            FileUtils.cleanDirectory(this.temp.toFile());
-        } catch (final IOException ex) {
-            ex.printStackTrace();
-        }
     }
 
     @Test
@@ -206,9 +199,10 @@ class RepositoryHttpIT {
         final InMemoryStorage files = new InMemoryStorage();
         final String name = UUID.randomUUID().toString();
         new BlockingStorage(files).save(new Key.From(name), content);
-        new VertxSliceServer(
+        this.sourceserver = new VertxSliceServer(
             this.vertx, new LoggingSlice(new FilesSlice(files)), freeport
-        ).start();
+        );
+        this.sourceserver.start();
         return String.format("http://host.testcontainers.internal:%d/%s", freeport, name);
     }
 
