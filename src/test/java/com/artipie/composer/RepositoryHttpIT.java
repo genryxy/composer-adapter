@@ -129,6 +129,7 @@ class RepositoryHttpIT {
     }
 
     @AfterEach
+    @SuppressWarnings("PMD.AvoidPrintStackTrace")it 
     void tearDown() {
         if (this.server != null) {
             this.server.stop();
