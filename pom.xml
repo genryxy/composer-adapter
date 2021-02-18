@@ -83,6 +83,7 @@ SOFTWARE.
     <dependency>
       <groupId>com.artipie</groupId>
       <artifactId>asto</artifactId>
+      <version>0.33.6</version>
     </dependency>
     <dependency>
       <groupId>javax.json</groupId>
