@@ -45,11 +45,6 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.json.Json;
-import org.cactoos.list.ListOf;
-import org.hamcrest.Matcher;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.core.AllOf;
-import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,7 +62,7 @@ import org.testcontainers.containers.GenericContainer;
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
-@SuppressWarnings({"PMD.UnusedPrivateMethod", "PMD.SingularField"})
+@SuppressWarnings("PMD.UnusedPrivateMethod")
 class RepositoryHttpIT {
     /**
      * Temporary directory.
@@ -137,7 +132,6 @@ class RepositoryHttpIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         if (this.sourceserver != null) {
             this.sourceserver.stop();
@@ -153,18 +147,16 @@ class RepositoryHttpIT {
             Json.createObjectBuilder()
                 .add("name", "vendor/package")
                 .add("version", "1.1.2")
+                .add(
+                    "dist",
+                    Json.createObjectBuilder()
+                        .add("url", this.upload(RepositoryHttpIT.emptyZip(), this.sourceport))
+                        .add("type", "zip")
+                )
                 .build()
                 .toString()
         );
         this.writeComposer();
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new AllOf<>(
-                new ListOf<Matcher<? super String>>(
-                    new StringContains(false, "Installs: vendor/package:1.1.2")
-                )
-            )
-        );
     }
 
     private void addPackage(final String pack) throws Exception {
