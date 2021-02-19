@@ -45,6 +45,11 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.json.Json;
+import org.cactoos.list.ListOf;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.AllOf;
+import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,7 +67,6 @@ import org.testcontainers.containers.GenericContainer;
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
-@SuppressWarnings("PMD.UnusedPrivateMethod")
 class RepositoryHttpIT {
     /**
      * Temporary directory.
@@ -157,6 +161,20 @@ class RepositoryHttpIT {
                 .toString()
         );
         this.writeComposer();
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new AllOf<>(
+                new ListOf<Matcher<? super String>>(
+                    new StringContains(false, "Installs: vendor/package:1.1.2"),
+                    new StringContains(false, "- Downloading vendor/package (1.1.2)"),
+                    new StringContains(
+                        false,
+                        "- Installing vendor/package (1.1.2): Extracting archive"
+                    )
+                )
+            )
+        );
+        this.exec("composer", "--version");
     }
 
     private void addPackage(final String pack) throws Exception {
