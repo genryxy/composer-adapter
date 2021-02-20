@@ -59,11 +59,19 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
  * Integration test for PHP Composer repository.
  *
  * @since 0.1
+ * @todo #78:30 min Avoid cleaning directory in this method.
+ *  Now method for cleaning directory is used because otherwise
+ *  temporary directory could not be deleted on github actions (it doesn't
+ *  happen locally on Win). Probably it related to the fact that
+ *  not all resources working with this temporary directory were
+ *  properly closed. The invocation of cleaning directory should
+ *  be removed.
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
@@ -136,6 +144,7 @@ class RepositoryHttpIT {
     }
 
     @AfterEach
+    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         if (this.sourceserver != null) {
             this.sourceserver.stop();
@@ -143,6 +152,11 @@ class RepositoryHttpIT {
         this.server.stop();
         this.vertx.close();
         this.cntn.stop();
+        try {
+            FileUtils.cleanDirectory(this.temp.toFile());
+        } catch (final IOException ex) {
+            ex.printStackTrace();
+        }
     }
 
     @Test
@@ -174,7 +188,6 @@ class RepositoryHttpIT {
                 )
             )
         );
-        this.exec("composer", "--version");
     }
 
     private void addPackage(final String pack) throws Exception {
