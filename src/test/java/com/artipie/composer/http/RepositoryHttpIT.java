@@ -21,13 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artipie.composer;
+package com.artipie.composer.http;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
-import com.artipie.composer.http.PhpComposer;
+import com.artipie.composer.AstoRepository;
+import com.artipie.composer.test.ComposerSimple;
+import com.artipie.composer.test.HttpUrlUpload;
+import com.artipie.composer.test.PackageSimple;
+import com.artipie.composer.test.TestAuthentication;
 import com.artipie.files.FilesSlice;
 import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
@@ -35,16 +39,13 @@ import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import javax.json.Json;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -159,20 +160,8 @@ class RepositoryHttpIT {
 
     @Test
     void shouldInstallAddedPackage() throws Exception {
-        this.addPackage(
-            Json.createObjectBuilder()
-                .add("name", "vendor/package")
-                .add("version", "1.1.2")
-                .add(
-                    "dist",
-                    Json.createObjectBuilder()
-                        .add("url", this.upload(RepositoryHttpIT.emptyZip(), this.sourceport))
-                        .add("type", "zip")
-                )
-                .build()
-                .toString()
-        );
-        this.writeComposer();
+        this.addPackage();
+        new ComposerSimple(this.url).writeTo(this.project.resolve("composer.json"));
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
@@ -188,30 +177,14 @@ class RepositoryHttpIT {
         );
     }
 
-    private void addPackage(final String pack) throws Exception {
-        HttpURLConnection conn = null;
-        try {
-            conn = (HttpURLConnection) new URL(
-                String.format("http://localhost:%s", this.port)
-            ).openConnection();
-            conn.setRequestMethod("PUT");
-            conn.setDoInput(true);
-            conn.setDoOutput(true);
-            try (DataOutputStream dos = new DataOutputStream(conn.getOutputStream())) {
-                dos.write(pack.getBytes());
-                dos.flush();
-            }
-            final int status = conn.getResponseCode();
-            if (status != HttpURLConnection.HTTP_CREATED) {
-                throw new IllegalStateException(
-                    String.format("Failed to upload package: %d", status)
-                );
-            }
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
+    private void addPackage() throws Exception {
+        new HttpUrlUpload(
+            String.format("http://localhost:%s", this.port),
+            new PackageSimple(
+                this.upload(RepositoryHttpIT.emptyZip(), this.sourceport)
+            ).value()
+            .getBytes()
+        ).upload(Optional.of(TestAuthentication.ALICE));
     }
 
     private String upload(final byte[] content, final int freeport) throws Exception {
@@ -233,23 +206,6 @@ class RepositoryHttpIT {
         );
         Logger.debug(this, log);
         return log;
-    }
-
-    private void writeComposer() throws IOException {
-        Files.write(
-            this.project.resolve("composer.json"),
-            String.join(
-                "",
-                "{",
-                "\"config\":{ \"secure-http\": false },",
-                "\"repositories\": [",
-                String.format("{\"type\": \"composer\", \"url\": \"%s\"},", this.url),
-                "{\"packagist.org\": false} ",
-                "],",
-                "\"require\": { \"vendor/package\": \"1.1.2\" }",
-                "}"
-            ).getBytes()
-        );
     }
 
     private static byte[] emptyZip() throws Exception {
