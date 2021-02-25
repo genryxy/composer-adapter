@@ -43,7 +43,7 @@ import com.artipie.http.rt.SliceRoute;
  */
 public final class PhpComposer extends Slice.Wrap {
     /**
-     * Ctor with existing front and default parameters for free access.
+     * Ctor.
      * @param repository Repository
      * @param perms Access permissions
      * @param auth Authentication
