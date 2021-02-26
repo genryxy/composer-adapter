@@ -100,11 +100,6 @@ final class RepositoryHttpAuthIT {
     private VertxSliceServer sourceserver;
 
     /**
-     * Repository URL.
-     */
-    private String url;
-
-    /**
      * Test container.
      */
     private GenericContainer<?> cntn;
@@ -127,6 +122,22 @@ final class RepositoryHttpAuthIT {
         this.project.toFile().mkdirs();
         this.port = new RandomFreePort().get();
         this.sourceport = new RandomFreePort().get();
+        final Slice slice = new PhpComposer(
+            new AstoRepository(new InMemoryStorage()),
+            new JoinedPermissions(
+                new Permissions.Single(TestAuthentication.ALICE.name(), "write"),
+                new Permissions.Single(TestAuthentication.ALICE.name(), "read")
+            ),
+            new TestAuthentication()
+        );
+        this.server = new VertxSliceServer(this.vertx, new LoggingSlice(slice), this.port);
+        this.server.start();
+        Testcontainers.exposeHostPorts(this.port, this.sourceport);
+        this.cntn = new GenericContainer<>("composer:2.0.9")
+            .withCommand("tail", "-f", "/dev/null")
+            .withWorkingDirectory("/home/")
+            .withFileSystemBind(this.project.toString(), "/home");
+        this.cntn.start();
     }
 
     @AfterEach
@@ -147,9 +158,9 @@ final class RepositoryHttpAuthIT {
 
     @Test
     void shouldInstallAddedPackageWithAuth() throws Exception {
-        this.start(TestAuthentication.ALICE);
         this.addPackage();
-        new ComposerSimple(this.url).writeTo(this.project.resolve("composer.json"));
+        new ComposerSimple(this.url(TestAuthentication.ALICE))
+            .writeTo(this.project.resolve("composer.json"));
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
@@ -167,9 +178,9 @@ final class RepositoryHttpAuthIT {
 
     @Test
     void returnsUnauthorizedWhenUserIsUnknown() throws Exception {
-        this.start(TestAuthentication.BOB);
         this.addPackage();
-        new ComposerSimple(this.url).writeTo(this.project.resolve("composer.json"));
+        new ComposerSimple(this.url(TestAuthentication.BOB))
+            .writeTo(this.project.resolve("composer.json"));
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new StringContains("URL required authentication")
@@ -182,7 +193,7 @@ final class RepositoryHttpAuthIT {
             new PackageSimple(
                 this.upload(RepositoryHttpAuthIT.emptyZip(), this.sourceport)
             ).value()
-                .getBytes()
+            .getBytes()
         ).upload(Optional.of(TestAuthentication.ALICE));
     }
 
@@ -207,30 +218,13 @@ final class RepositoryHttpAuthIT {
         return log;
     }
 
-    private void start(final TestAuthentication.User user) {
-        final Slice slice;
-        slice = new PhpComposer(
-            new AstoRepository(new InMemoryStorage()),
-            new JoinedPermissions(
-                new Permissions.Single(TestAuthentication.ALICE.name(), "write"),
-                new Permissions.Single(TestAuthentication.ALICE.name(), "read")
-            ),
-            new TestAuthentication()
-        );
-        this.url = String.format(
+    private String url(final TestAuthentication.User user) {
+        return String.format(
             "http://%s:%s@host.testcontainers.internal:%d",
             user.name(),
             user.password(),
             this.port
         );
-        this.server = new VertxSliceServer(this.vertx, new LoggingSlice(slice), this.port);
-        this.server.start();
-        Testcontainers.exposeHostPorts(this.port, this.sourceport);
-        this.cntn = new GenericContainer<>("composer:2.0.9")
-            .withCommand("tail", "-f", "/dev/null")
-            .withWorkingDirectory("/home/")
-            .withFileSystemBind(this.project.toString(), "/home");
-        this.cntn.start();
     }
 
     private static byte[] emptyZip() throws Exception {
