@@ -24,13 +24,11 @@
 
 package com.artipie.composer;
 
-import com.google.common.io.ByteSource;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import javax.json.Json;
+import com.artipie.asto.Content;
+import com.artipie.composer.misc.ContentAsJson;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonString;
 
 /**
  * PHP Composer package built from JSON.
@@ -42,34 +40,31 @@ public final class JsonPackage implements Package {
     /**
      * Package binary content.
      */
-    private final ByteSource content;
+    private final Content content;
 
     /**
      * Ctor.
      *
      * @param content Package binary content.
      */
-    public JsonPackage(final ByteSource content) {
+    public JsonPackage(final Content content) {
         this.content = content;
     }
 
     @Override
-    public Name name() {
-        return new Name(this.mandatoryString("name"));
+    public CompletionStage<Name> name() {
+        return this.mandatoryString("name")
+            .thenApply(Name::new);
     }
 
     @Override
-    public String version() {
+    public CompletionStage<String> version() {
         return this.mandatoryString("version");
     }
 
     @Override
-    public JsonObject json() {
-        try (JsonReader reader = Json.createReader(this.content.openStream())) {
-            return reader.readObject();
-        } catch (final IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+    public CompletionStage<JsonObject> json() {
+        return new ContentAsJson(this.content).value();
     }
 
     /**
@@ -78,11 +73,26 @@ public final class JsonPackage implements Package {
      * @param name Attribute value.
      * @return String value.
      */
-    private String mandatoryString(final String name) {
-        final JsonString string = this.json().getJsonString(name);
-        if (string == null) {
-            throw new IllegalStateException(String.format("Bad package, no '%s' found.", name));
-        }
-        return string.getString();
+    private CompletionStage<String> mandatoryString(final String name) {
+        return this.json()
+            .thenApply(jsn -> jsn.getString(name))
+            .thenCompose(
+                val -> {
+                    final CompletionStage<String> res;
+                    if (val == null) {
+                        res = new CompletableFuture<String>()
+                            .exceptionally(
+                                ignore -> {
+                                    throw new IllegalStateException(
+                                        String.format("Bad package, no '%s' found.", name)
+                                    );
+                                }
+                        );
+                    } else {
+                        res = CompletableFuture.completedFuture(val);
+                    }
+                    return res;
+                }
+            );
     }
 }

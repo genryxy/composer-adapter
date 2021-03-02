@@ -21,36 +21,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.artipie.composer.misc;
 
-package com.artipie.composer;
-
+import com.artipie.asto.Content;
+import com.artipie.asto.ext.PublisherAs;
+import java.io.StringReader;
 import java.util.concurrent.CompletionStage;
+import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
 
 /**
- * PHP Composer package.
- *
- * @since 0.1
+ * Auxiliary class for converting content to json.
+ * @since 0.4
  */
-public interface Package {
+public final class ContentAsJson {
     /**
-     * Extract name from package.
-     *
-     * @return Package name.
+     * Source content.
      */
-    CompletionStage<Name> name();
+    private final Content source;
 
     /**
-     * Extract version from package.
-     *
-     * @return Package version.
+     * Ctor.
+     * @param content Source content
      */
-    CompletionStage<String> version();
+    public ContentAsJson(final Content content) {
+        this.source = content;
+    }
 
     /**
-     * Reads package content as JSON object.
-     *
-     * @return Package JSON object.
+     * Converts content to json.
+     * @return JSON object
      */
-    CompletionStage<JsonObject> json();
+    public CompletionStage<JsonObject> value() {
+        return new PublisherAs(this.source)
+            .asciiString()
+            .thenApply(
+                str -> {
+                    try (JsonReader reader = Json.createReader(new StringReader(str))) {
+                        return reader.readObject();
+                    }
+                }
+            );
+    }
 }

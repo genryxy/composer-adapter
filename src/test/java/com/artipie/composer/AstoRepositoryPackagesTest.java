@@ -66,7 +66,8 @@ class AstoRepositoryPackagesTest {
         final byte[] bytes = "some data".getBytes();
         new BlockingStorage(this.storage).save(name.key(), bytes);
         new AstoRepository(this.storage).packages(name).toCompletableFuture().join().get()
-            .save(this.storage, name.key()).join();
+            .save(this.storage, name.key())
+            .toCompletableFuture().join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(name.key()),
             new IsEqual<>(bytes)
@@ -86,7 +87,8 @@ class AstoRepositoryPackagesTest {
         final byte[] bytes = "all packages".getBytes();
         new BlockingStorage(this.storage).save(new AllPackages(), bytes);
         new AstoRepository(this.storage).packages().toCompletableFuture().join().get()
-            .save(this.storage, new AllPackages()).join();
+            .save(this.storage, new AllPackages())
+            .toCompletableFuture().join();
         MatcherAssert.assertThat(
             new BlockingStorage(this.storage).value(new AllPackages()),
             new IsEqual<>(bytes)

@@ -30,9 +30,8 @@ import com.artipie.http.Response;
 import com.artipie.http.Slice;
 import com.artipie.http.async.AsyncResponse;
 import com.artipie.http.rq.RequestLineFrom;
-import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithBody;
-import com.artipie.http.rs.RsWithStatus;
+import com.artipie.http.rs.StandardRs;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
@@ -81,11 +80,14 @@ public final class PackageMetadataSlice implements Slice {
         final Publisher<ByteBuffer> body
     ) {
         return new AsyncResponse(
-            this.packages(new RequestLineFrom(line).uri().getPath()).thenApply(
-                opt -> opt.<Response>map(
-                    packages -> new RsWithBody(packages.content())
-                ).orElse(new RsWithStatus(RsStatus.NOT_FOUND))
-            )
+            this.packages(new RequestLineFrom(line).uri().getPath())
+                .thenApply(
+                    opt -> opt.<Response>map(
+                        packages -> new AsyncResponse(packages.content()
+                            .thenApply(RsWithBody::new)
+                        )
+                    ).orElse(StandardRs.NOT_FOUND)
+                )
         );
     }
 
