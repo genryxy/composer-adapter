@@ -24,33 +24,27 @@
 
 package com.artipie.composer;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
-import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import javax.json.Json;
+import com.artipie.asto.test.TestResource;
+import com.artipie.composer.misc.ContentAsJson;
 import javax.json.JsonObject;
-import javax.json.JsonReader;
-import org.cactoos.io.ResourceOf;
+import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
 import org.hamcrest.core.IsNot;
 import org.hamcrest.core.IsNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
 /**
  * Tests for {@link JsonPackages}.
  *
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (6 lines)
  */
 class JsonPackagesTest {
 
@@ -64,76 +58,90 @@ class JsonPackagesTest {
      */
     private Package pack;
 
+    /**
+     * Package name.
+     */
+    private Name name;
+
     @BeforeEach
-    void init() throws Exception {
+    void init() {
         this.storage = new InMemoryStorage();
         this.pack = new JsonPackage(
-            ByteSource.wrap(
-                ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
+            new Content.From(
+                new TestResource("minimal-package.json").asBytes()
             )
         );
+        this.name = this.pack.name().toCompletableFuture().join();
     }
 
     @Test
     void shouldSaveEmpty() throws Exception {
-        final Name name = this.pack.name();
-        new JsonPackages().save(this.storage, name.key()).get();
-        MatcherAssert.assertThat(this.versions(this.json(name.key())), Matchers.nullValue());
-    }
-
-    @Test
-    void shouldSaveNotEmpty() throws Exception {
-        final ResourceOf resource = new ResourceOf("packages.json");
-        final Key key = this.pack.name().key();
-        new JsonPackages(
-            ByteSource.wrap(
-                ByteStreams.toByteArray(resource.stream())
-            )
-        ).save(this.storage, key).get();
+        new JsonPackages().save(this.storage, this.name.key())
+            .toCompletableFuture().get();
         MatcherAssert.assertThat(
-            new BlockingStorage(this.storage).value(key),
-            new IsEqual<>(ByteStreams.toByteArray(resource.stream()))
+            this.versions(this.json(this.name.key())),
+            new IsNull<>()
         );
     }
 
     @Test
-    void shouldAddPackageWhenEmpty() throws Exception {
+    void shouldSaveNotEmpty() {
+        final byte[] pkg = new TestResource("packages.json").asBytes();
+        final Key key = this.name.key();
+        new JsonPackages(new Content.From(pkg))
+            .save(this.storage, key)
+            .toCompletableFuture().join();
+        MatcherAssert.assertThat(
+            new BlockingStorage(this.storage).value(key),
+            new IsEqual<>(pkg)
+        );
+    }
+
+    @Test
+    void shouldAddPackageWhenEmpty() {
         final JsonObject json = this.addPackageTo("{\"packages\":{}}");
         MatcherAssert.assertThat(
-            this.versions(json).getJsonObject(this.pack.version()),
+            this.versions(json).getJsonObject(
+                this.pack.version()
+                    .toCompletableFuture().join()
+            ),
             new IsNot<>(new IsNull<>())
         );
     }
 
     @Test
-    void shouldAddPackageWhenNotEmpty() throws Exception {
+    void shouldAddPackageWhenNotEmpty() {
         final JsonObject json = this.addPackageTo(
             "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}"
         );
         final JsonObject versions = this.versions(json);
         MatcherAssert.assertThat(
             versions.keySet(),
-            new IsEqual<>(new HashSet<>(Arrays.asList("1.1.0", this.pack.version())))
+            new IsEqual<>(
+                new SetOf<>("1.1.0", this.pack.version().toCompletableFuture().join())
+            )
         );
     }
 
-    private JsonObject addPackageTo(final String original) throws Exception {
-        final Key key = this.pack.name().key();
-        new JsonPackages(ByteSource.wrap(original.getBytes()))
+    private JsonObject addPackageTo(final String original) {
+        final Key key = this.name.key();
+        new JsonPackages(new Content.From(original.getBytes()))
             .add(this.pack)
+            .toCompletableFuture().join()
             .save(this.storage, key)
-            .get();
-        return this.json(this.pack.name().key());
+            .toCompletableFuture().join();
+        return this.json(key);
     }
 
-    private JsonObject json(final Key key) throws Exception {
-        final byte[] bytes = new BlockingStorage(this.storage).value(key);
-        try (JsonReader reader = Json.createReader(new ByteArrayInputStream(bytes))) {
-            return reader.readObject();
-        }
+    private JsonObject json(final Key key) {
+        return new ContentAsJson(
+            this.storage.value(key)
+                .toCompletableFuture().join()
+        ).value().toCompletableFuture().join();
     }
 
-    private JsonObject versions(final JsonObject json) throws IOException {
-        return json.getJsonObject("packages").getJsonObject(this.pack.name().string());
+    private JsonObject versions(final JsonObject json) {
+        return json.getJsonObject("packages")
+            .getJsonObject(this.name.string());
     }
 }

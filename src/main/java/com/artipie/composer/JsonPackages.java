@@ -27,16 +27,13 @@ package com.artipie.composer;
 import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import com.google.common.io.ByteSource;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import com.artipie.composer.misc.ContentAsJson;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-import javax.json.JsonReader;
-import javax.json.JsonWriter;
 
 /**
  * PHP Composer packages registry built from JSON.
@@ -53,14 +50,14 @@ public final class JsonPackages implements Packages {
     /**
      * Packages registry content.
      */
-    private final ByteSource source;
+    private final Content source;
 
     /**
      * Ctor.
      */
     public JsonPackages() {
         this(
-            bytes(
+            toContent(
                 Json.createObjectBuilder()
                     .add(JsonPackages.ATTRIBUTE, Json.createObjectBuilder())
                     .build()
@@ -73,82 +70,68 @@ public final class JsonPackages implements Packages {
      *
      * @param source Packages registry content.
      */
-    public JsonPackages(final ByteSource source) {
+    public JsonPackages(final Content source) {
         this.source = source;
     }
 
     @Override
-    public Packages add(final Package pack) {
-        final JsonObject json = this.json();
-        if (json.isNull(JsonPackages.ATTRIBUTE)) {
-            throw new IllegalStateException("Bad content, no 'packages' object found");
-        }
-        final JsonObject packages = json.getJsonObject(JsonPackages.ATTRIBUTE);
-        final String pname = pack.name().string();
-        final JsonObjectBuilder builder;
-        if (packages.isEmpty() || packages.isNull(pname)) {
-            builder = Json.createObjectBuilder();
-        } else {
-            builder = Json.createObjectBuilder(packages.getJsonObject(pname));
-        }
-        builder.add(pack.version(), pack.json());
-        return new JsonPackages(
-            bytes(
-                Json.createObjectBuilder(json)
-                    .add(
-                        JsonPackages.ATTRIBUTE,
-                        Json.createObjectBuilder(packages).add(pname, builder)
-                    )
-                    .build()
-            )
-        );
+    public CompletionStage<Packages> add(final Package pack) {
+        return new ContentAsJson(this.source)
+            .value()
+            .thenCompose(
+                json -> {
+                    if (json.isNull(JsonPackages.ATTRIBUTE)) {
+                        throw new IllegalStateException("Bad content, no 'packages' object found");
+                    }
+                    final JsonObject pkgs = json.getJsonObject(JsonPackages.ATTRIBUTE);
+                    return pack.name()
+                        .thenApply(Name::string)
+                        .thenCompose(
+                            pname -> {
+                                final JsonObjectBuilder builder;
+                                if (pkgs.isEmpty() || pkgs.isNull(pname)) {
+                                    builder = Json.createObjectBuilder();
+                                } else {
+                                    builder = Json.createObjectBuilder(pkgs.getJsonObject(pname));
+                                }
+                                return pack.version().thenCombine(
+                                    pack.json(),
+                                    builder::add
+                                ).thenApply(
+                                    bldr -> new JsonPackages(
+                                        toContent(
+                                            Json.createObjectBuilder(json)
+                                                .add(
+                                                    JsonPackages.ATTRIBUTE,
+                                                    Json.createObjectBuilder(pkgs).add(pname, bldr)
+                                                ).build()
+                                        )
+                                    )
+                                );
+                            }
+                        );
+                }
+            );
     }
 
     @Override
-    public CompletableFuture<Void> save(final Storage storage, final Key key) {
-        return storage.save(key, this.content());
+    public CompletionStage<Void> save(final Storage storage, final Key key) {
+        return this.content()
+            .thenCompose(content -> storage.save(key, content));
     }
 
     @Override
-    public Content content() {
-        final byte[] bytes;
-        try {
-            bytes = this.source.read();
-        } catch (final IOException ex) {
-            throw new UncheckedIOException("Failed to read content", ex);
-        }
-        return new Content.From(bytes);
+    public CompletionStage<Content> content() {
+        return CompletableFuture.completedFuture(this.source);
     }
 
     /**
-     * Reads content as JSON object.
-     *
-     * @return JSON object.
-     */
-    private JsonObject json() {
-        try (JsonReader reader = Json.createReader(this.source.openStream())) {
-            return reader.readObject();
-        } catch (final IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
-    }
-
-    /**
-     * Serializes JSON object into bytes.
+     * Serializes JSON object into content.
      *
      * @param json JSON object.
      * @return Serialized JSON object.
      */
-    private static ByteSource bytes(final JsonObject json) {
-        try {
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-                JsonWriter writer = Json.createWriter(out)) {
-                writer.writeObject(json);
-                out.flush();
-                return ByteSource.wrap(out.toByteArray());
-            }
-        } catch (final IOException ex) {
-            throw new IllegalStateException("Failed to serialize JSON to bytes", ex);
-        }
+    private static Content toContent(final JsonObject json) {
+        return new Content.From(json.toString().getBytes(StandardCharsets.UTF_8));
     }
 }

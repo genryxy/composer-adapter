@@ -23,10 +23,12 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.asto.test.TestResource;
 import com.artipie.composer.AllPackages;
 import com.artipie.composer.AstoRepository;
 import com.artipie.http.Response;
@@ -35,12 +37,9 @@ import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.rq.RequestLine;
 import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
-import com.google.common.io.ByteStreams;
 import io.reactivex.Flowable;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
-import org.cactoos.io.ResourceOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,14 +149,12 @@ class PhpComposerTest {
     }
 
     @Test
-    void shouldPutRoot() throws Exception {
+    void shouldPutRoot() {
         final Response response = this.php.response(
             new RequestLine(RqMethod.PUT, "/").toString(),
             Collections.emptyList(),
-            Flowable.just(
-                ByteBuffer.wrap(
-                    ByteStreams.toByteArray(new ResourceOf("minimal-package.json").stream())
-                )
+            new Content.From(
+                new TestResource("minimal-package.json").asBytes()
             )
         );
         MatcherAssert.assertThat(

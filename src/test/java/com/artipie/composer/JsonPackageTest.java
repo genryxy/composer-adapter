@@ -24,12 +24,10 @@
 
 package com.artipie.composer;
 
-import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
-import java.io.IOException;
-import org.cactoos.io.ResourceOf;
+import com.artipie.asto.Content;
+import com.artipie.asto.test.TestResource;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
+import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,24 +44,29 @@ class JsonPackageTest {
     private Package pack;
 
     @BeforeEach
-    void init() throws Exception {
-        final ResourceOf json = new ResourceOf("minimal-package.json");
-        this.pack = new JsonPackage(ByteSource.wrap(ByteStreams.toByteArray(json.stream())));
-    }
-
-    @Test
-    void shouldExtractName() throws IOException {
-        MatcherAssert.assertThat(
-            this.pack.name().key().string(),
-            Matchers.is("vendor/package.json")
+    void init()  {
+        this.pack = new JsonPackage(
+            new Content.From(
+                new TestResource("minimal-package.json").asBytes()
+            )
         );
     }
 
     @Test
-    void shouldExtractVersion() throws IOException {
+    void shouldExtractName() {
         MatcherAssert.assertThat(
-            this.pack.version(),
-            Matchers.is("1.2.0")
+            this.pack.name()
+                .toCompletableFuture().join()
+                .key().string(),
+            new IsEqual<>("vendor/package.json")
+        );
+    }
+
+    @Test
+    void shouldExtractVersion() {
+        MatcherAssert.assertThat(
+            this.pack.version().toCompletableFuture().join(),
+            new IsEqual<>("1.2.0")
         );
     }
 }

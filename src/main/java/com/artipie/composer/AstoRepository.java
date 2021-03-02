@@ -28,7 +28,6 @@ import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
-import com.google.common.io.ByteSource;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -79,16 +78,25 @@ public final class AstoRepository implements Repository {
                 .thenCompose(PublisherAs::bytes)
                 .thenCompose(
                     bytes -> {
-                        final Package pack = new JsonPackage(ByteSource.wrap(bytes));
-                        final Name name = pack.name();
+                        final Package pack = new JsonPackage(new Content.From(bytes));
                         return CompletableFuture.allOf(
                             this.packages().thenCompose(
-                                packages -> packages.orElse(new JsonPackages()).add(pack)
-                                    .save(this.storage, AstoRepository.ALL_PACKAGES)
+                                packages -> packages.orElse(new JsonPackages())
+                                    .add(pack)
+                                    .thenCompose(
+                                        pkgs -> pkgs.save(
+                                            this.storage, AstoRepository.ALL_PACKAGES
+                                        )
+                                    )
                             ).toCompletableFuture(),
-                            this.packages(name).thenCompose(
-                                packages -> packages.orElse(new JsonPackages()).add(pack)
-                                    .save(this.storage, name.key())
+                            pack.name().thenCompose(
+                                name -> this.packages(name).thenCompose(
+                                    packages -> packages.orElse(new JsonPackages())
+                                        .add(pack)
+                                        .thenCompose(
+                                            pkgs -> pkgs.save(this.storage, name.key())
+                                        )
+                                )
                             ).toCompletableFuture()
                         ).thenCompose(
                             ignored -> this.storage.delete(key)
@@ -110,9 +118,7 @@ public final class AstoRepository implements Repository {
                 final CompletionStage<Optional<Packages>> packages;
                 if (exists) {
                     packages = this.storage.value(key)
-                        .thenApply(PublisherAs::new)
-                        .thenCompose(PublisherAs::bytes)
-                        .thenApply(bytes -> new JsonPackages(ByteSource.wrap(bytes)))
+                        .thenApply(JsonPackages::new)
                         .thenApply(Optional::of);
                 } else {
                     packages = CompletableFuture.completedFuture(Optional.empty());

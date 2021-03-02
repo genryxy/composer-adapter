@@ -22,35 +22,8 @@
  * SOFTWARE.
  */
 
-package com.artipie.composer;
-
-import java.util.concurrent.CompletionStage;
-import javax.json.JsonObject;
-
 /**
- * PHP Composer package.
- *
- * @since 0.1
+ * Composer misc helper objects.
+ * @since 0.4
  */
-public interface Package {
-    /**
-     * Extract name from package.
-     *
-     * @return Package name.
-     */
-    CompletionStage<Name> name();
-
-    /**
-     * Extract version from package.
-     *
-     * @return Package version.
-     */
-    CompletionStage<String> version();
-
-    /**
-     * Reads package content as JSON object.
-     *
-     * @return Package JSON object.
-     */
-    CompletionStage<JsonObject> json();
-}
+package com.artipie.composer.misc;

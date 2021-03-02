@@ -27,7 +27,7 @@ package com.artipie.composer;
 import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * PHP Composer packages registry.
@@ -41,7 +41,7 @@ public interface Packages {
      * @param pack Package.
      * @return Updated packages.
      */
-    Packages add(Package pack);
+    CompletionStage<Packages> add(Package pack);
 
     /**
      * Saves packages registry binary content to storage.
@@ -50,12 +50,12 @@ public interface Packages {
      * @param key Key to store packages.
      * @return Completion of saving.
      */
-    CompletableFuture<Void> save(Storage storage, Key key);
+    CompletionStage<Void> save(Storage storage, Key key);
 
     /**
      * Reads packages registry binary content.
      *
      * @return Content.
      */
-    Content content();
+    CompletionStage<Content> content();
 }
