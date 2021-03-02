@@ -121,7 +121,6 @@ public final class JsonPackages implements Packages {
     }
 
     @Override
-    // Is it necessary?
     public CompletionStage<Content> content() {
         return CompletableFuture.completedFuture(this.source);
     }
