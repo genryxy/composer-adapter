@@ -23,53 +23,41 @@
  */
 package com.artipie.composer.http;
 
-import com.artipie.asto.Content;
-import com.artipie.composer.Repository;
-import com.artipie.http.Response;
-import com.artipie.http.Slice;
-import com.artipie.http.async.AsyncResponse;
+import com.artipie.asto.Storage;
+import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.composer.AstoRepository;
+import com.artipie.http.hm.RsHasStatus;
+import com.artipie.http.hm.SliceHasResponse;
+import com.artipie.http.rq.RequestLine;
+import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
-import com.artipie.http.rs.RsWithStatus;
-import java.nio.ByteBuffer;
-import java.util.Map;
-import java.util.regex.Pattern;
-import org.reactivestreams.Publisher;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
- * Slice for adding a package to the repository in JSON format.
+ * Tests for {@link AddZipSlice}.
  *
- * @since 0.3
+ * @since 0.4
  */
-final class AddSlice implements Slice {
-
+final class AddZipSliceTest {
     /**
-     * RegEx pattern for matching path.
+     * Test storage.
      */
-    public static final Pattern PATH_PATTERN = Pattern.compile("^/$");
+    private Storage storage;
 
-    /**
-     * Repository.
-     */
-    private final Repository repository;
-
-    /**
-     * Ctor.
-     *
-     * @param repository Repository.
-     */
-    AddSlice(final Repository repository) {
-        this.repository = repository;
+    @BeforeEach
+    void setUp() {
+        this.storage = new InMemoryStorage();
     }
 
-    @Override
-    public Response response(
-        final String line,
-        final Iterable<Map.Entry<String, String>> headers,
-        final Publisher<ByteBuffer> body
-    ) {
-        return new AsyncResponse(
-            this.repository.addJson(new Content.From(body)).thenApply(
-                nothing -> new RsWithStatus(RsStatus.CREATED)
+    @Test
+    void returnsBadRequest() {
+        MatcherAssert.assertThat(
+            new AddZipSlice(new AstoRepository(this.storage)),
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.BAD_REQUEST),
+                new RequestLine(RqMethod.GET, "/bad/request")
             )
         );
     }

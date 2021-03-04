@@ -21,49 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.artipie.composer;
 
 import com.artipie.asto.Content;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 /**
- * PHP Composer repository.
+ * Tests for {@link AstoRepository#addZip(Content)}.
  *
- * @since 0.3
+ * @since 0.4
  */
-public interface Repository {
+final class AstoRepositoryAddZipTest {
 
-    /**
-     * Reads packages description from storage.
-     *
-     * @return Packages found by name, might be empty.
-     */
-    CompletionStage<Optional<Packages>> packages();
-
-    /**
-     * Reads packages description from storage.
-     *
-     * @param name Package name.
-     * @return Packages found by name, might be empty.
-     */
-    CompletionStage<Optional<Packages>> packages(Name name);
-
-    /**
-     * Adds package described in JSON format from storage.
-     *
-     * @param content Package content.
-     * @return Completion of adding package to repository.
-     */
-    CompletableFuture<Void> addJson(Content content);
-
-    /**
-     * Adds package described in ZIP format from storage.
-     *
-     * @param content Package content.
-     * @return Completion of adding package to repository.
-     */
-    CompletableFuture<Void> addZip(Content content);
 }
