@@ -44,8 +44,11 @@ import org.reactivestreams.Publisher;
 final class AddZipSlice implements Slice {
     /**
      * Composer HTTP for entry point.
+     * See <a href="https://getcomposer.org/doc/04-schema.md#version">docs</a>.
      */
-    public static final Pattern PATH = Pattern.compile("^/(?<name>.*)-(?<version>.*).zip$");
+    public static final Pattern PATH = Pattern.compile(
+        "^/(?<name>[a-z0-9_.\\-]*)-v?(?<version>\\d+.\\d+.\\d+[-\\w]*).zip$"
+    );
 
     /**
      * Repository.

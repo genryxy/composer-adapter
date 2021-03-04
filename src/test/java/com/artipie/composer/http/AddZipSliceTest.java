@@ -31,9 +31,13 @@ import com.artipie.http.hm.SliceHasResponse;
 import com.artipie.http.rq.RequestLine;
 import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
+import java.util.regex.Matcher;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Tests for {@link AddZipSlice}.
@@ -49,6 +53,40 @@ final class AddZipSliceTest {
     @BeforeEach
     void setUp() {
         this.storage = new InMemoryStorage();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "/log-1.1.3.zip,log,1.1.3",
+        "/log-bad.1.3.zip,,",
+        "/path/name-2.1.3.zip,,",
+        "/name-prefix-0.10.321.zip,name-prefix,0.10.321",
+        "/name.suffix-1.2.2-patch.zip,name.suffix,1.2.2-patch",
+        "/name-2.3.1-beta1.zip,name,2.3.1-beta1"
+    })
+    void patternExtractsNameAndVersionCorrectly(
+        final String url, final String name, final String vers
+    ) {
+        final Matcher matcher = AddZipSlice.PATH.matcher(url);
+        final String cname;
+        final String cvers;
+        if (matcher.matches()) {
+            cname = matcher.group("name");
+            cvers = matcher.group("version");
+        } else {
+            cname = null;
+            cvers = null;
+        }
+        MatcherAssert.assertThat(
+            "Name is correct",
+            cname,
+            new IsEqual<>(name)
+        );
+        MatcherAssert.assertThat(
+            "Version is correct",
+            cvers,
+            new IsEqual<>(vers)
+        );
     }
 
     @Test
