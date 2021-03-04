@@ -39,8 +39,6 @@ import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,10 +54,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
  * Integration test for PHP Composer repository.
@@ -78,8 +76,10 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 class RepositoryHttpIT {
     /**
      * Temporary directory.
+     * @checkstyle VisibilityModifierCheck (3 lines)
      */
-    private Path temp;
+    @TempDir
+    Path temp;
 
     /**
      * Vert.x instance to use in tests.
@@ -122,8 +122,7 @@ class RepositoryHttpIT {
     private int sourceport;
 
     @BeforeEach
-    void setUp() throws IOException {
-        this.temp = Files.createTempDirectory("");
+    void setUp() {
         this.vertx = Vertx.vertx();
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
@@ -143,7 +142,6 @@ class RepositoryHttpIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         if (this.sourceserver != null) {
             this.sourceserver.stop();
@@ -151,11 +149,6 @@ class RepositoryHttpIT {
         this.server.stop();
         this.vertx.close();
         this.cntn.stop();
-        try {
-            FileUtils.cleanDirectory(this.temp.toFile());
-        } catch (final IOException ex) {
-            ex.printStackTrace();
-        }
     }
 
     @Test
