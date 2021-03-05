@@ -45,7 +45,7 @@ import org.reactivestreams.Publisher;
  *
  * @since 0.3
  */
-public final class PackageMetadataSlice implements Slice {
+final class PackageMetadataSlice implements Slice {
 
     /**
      * RegEx pattern for package metadata path.
@@ -69,7 +69,7 @@ public final class PackageMetadataSlice implements Slice {
      *
      * @param repository Repository.
      */
-    public PackageMetadataSlice(final Repository repository) {
+    PackageMetadataSlice(final Repository repository) {
         this.repository = repository;
     }
 

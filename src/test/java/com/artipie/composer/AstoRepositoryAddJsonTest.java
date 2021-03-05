@@ -44,12 +44,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link AstoRepository#add(Content)}.
+ * Tests for {@link AstoRepository#addJson(Content)}.
  *
- * @since 0.3
+ * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
-class AstoRepositoryAddTest {
+class AstoRepositoryAddJsonTest {
 
     /**
      * Storage used in tests.
@@ -79,7 +79,7 @@ class AstoRepositoryAddTest {
 
     @Test
     void shouldAddPackageToAll() throws Exception {
-        new AstoRepository(this.storage).add(this.packageJson()).get();
+        new AstoRepository(this.storage).addJson(this.packageJson()).get();
         final Name name = this.pack.name()
             .toCompletableFuture().join();
         MatcherAssert.assertThat(
@@ -94,7 +94,7 @@ class AstoRepositoryAddTest {
             new AllPackages(),
             "{\"packages\":{\"vendor/package\":{\"2.0\":{}}}}".getBytes()
         );
-        new AstoRepository(this.storage).add(this.packageJson()).get();
+        new AstoRepository(this.storage).addJson(this.packageJson()).get();
         MatcherAssert.assertThat(
             this.packages().getJsonObject("vendor/package").keySet(),
             new IsEqual<>(new SetOf<>("2.0", this.version))
@@ -103,7 +103,7 @@ class AstoRepositoryAddTest {
 
     @Test
     void shouldAddPackage() throws Exception {
-        new AstoRepository(this.storage).add(this.packageJson()).get();
+        new AstoRepository(this.storage).addJson(this.packageJson()).get();
         final Name name = this.pack.name()
             .toCompletableFuture().join();
         MatcherAssert.assertThat(
@@ -121,7 +121,7 @@ class AstoRepositoryAddTest {
             name.key(),
             "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}".getBytes()
         );
-        new AstoRepository(this.storage).add(this.packageJson()).get();
+        new AstoRepository(this.storage).addJson(this.packageJson()).get();
         MatcherAssert.assertThat(
             // @checkstyle LineLengthCheck (1 line)
             "Package with both new and old versions should present in packages after adding new version",
@@ -132,7 +132,7 @@ class AstoRepositoryAddTest {
 
     @Test
     void shouldDeleteSourceAfterAdding() throws Exception {
-        new AstoRepository(this.storage).add(this.packageJson()).get();
+        new AstoRepository(this.storage).addJson(this.packageJson()).get();
         MatcherAssert.assertThat(
             this.storage.list(Key.ROOT).join().stream()
                 .map(Key::string)

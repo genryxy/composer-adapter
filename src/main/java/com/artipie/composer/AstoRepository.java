@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import org.apache.commons.lang3.NotImplementedException;
 
 /**
  * PHP Composer repository that stores packages in a {@link Storage}.
@@ -70,7 +71,7 @@ public final class AstoRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Void> add(final Content content) {
+    public CompletableFuture<Void> addJson(final Content content) {
         final Key key = new Key.From(UUID.randomUUID().toString());
         return this.storage.save(key, content).thenCompose(
             saved -> this.storage.value(key)
@@ -104,6 +105,11 @@ public final class AstoRepository implements Repository {
                     }
                 )
         );
+    }
+
+    @Override
+    public CompletableFuture<Void> addZip(final Content content) {
+        throw new NotImplementedException("not implemented yet");
     }
 
     /**
