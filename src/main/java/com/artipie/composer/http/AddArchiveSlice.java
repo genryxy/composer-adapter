@@ -38,10 +38,11 @@ import org.reactivestreams.Publisher;
 
 /**
  * Slice for adding a package to the repository in ZIP format.
+ * See <a href="https://getcomposer.org/doc/05-repositories.md#artifact">Artifact repository</a>.
  * @since 0.4
  */
 @SuppressWarnings({"PMD.SingularField", "PMD.UnusedPrivateField"})
-final class AddZipSlice implements Slice {
+final class AddArchiveSlice implements Slice {
     /**
      * Composer HTTP for entry point.
      * See <a href="https://getcomposer.org/doc/04-schema.md#version">docs</a>.
@@ -59,7 +60,7 @@ final class AddZipSlice implements Slice {
      * Ctor.
      * @param repository Repository.
      */
-    AddZipSlice(final Repository repository) {
+    AddArchiveSlice(final Repository repository) {
         this.repository = repository;
     }
 
@@ -71,7 +72,7 @@ final class AddZipSlice implements Slice {
     ) {
         final RequestLineFrom rqline = new RequestLineFrom(line);
         final String uri = rqline.uri().getPath();
-        final Matcher matcher = AddZipSlice.PATH.matcher(uri);
+        final Matcher matcher = AddArchiveSlice.PATH.matcher(uri);
         final Response resp;
         if (matcher.matches()) {
             throw new NotImplementedException("not implemented yet");

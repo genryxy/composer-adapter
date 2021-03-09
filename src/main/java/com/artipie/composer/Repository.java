@@ -25,6 +25,7 @@
 package com.artipie.composer;
 
 import com.artipie.asto.Content;
+import com.artipie.composer.http.Archive;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -60,10 +61,12 @@ public interface Repository {
     CompletableFuture<Void> addJson(Content content);
 
     /**
-     * Adds package described in ZIP format from storage.
+     * Adds package described in archive with ZIP or TAR.GZ
+     * format from storage.
      *
+     * @param archive Archive with package content.
      * @param content Package content.
      * @return Completion of adding package to repository.
      */
-    CompletableFuture<Void> addZip(Content content);
+    CompletableFuture<Void> addArchive(Archive archive, Content content);
 }
