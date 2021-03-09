@@ -48,6 +48,12 @@ public interface Archive {
     CompletionStage<JsonObject> composer();
 
     /**
+     * Obtains archive name.
+     * @return Archive name.
+     */
+    Archive.Name name();
+
+    /**
      * Archive in ZIP format.
      * @since 0.4
      */
@@ -58,10 +64,17 @@ public interface Archive {
         private final Content content;
 
         /**
+         * Archive file name.
+         */
+        private final Name cname;
+
+        /**
          * Ctor.
+         * @param name Name of archive file
          * @param content Content of ZIP archive
          */
-        public Zip(final Content content) {
+        public Zip(final Name name, final Content content) {
+            this.cname = name;
             this.content = content;
         }
 
@@ -70,6 +83,11 @@ public interface Archive {
             return this.file("composer.json")
                 .thenApply(ContentAsJson::new)
                 .thenCompose(ContentAsJson::value);
+        }
+
+        @Override
+        public Name name() {
+            return this.cname;
         }
 
         /**
@@ -102,6 +120,49 @@ public interface Archive {
                         }
                     }
             );
+        }
+    }
+
+    /**
+     * Name of archive consisting of name and version.
+     * For example, "name-1.0.1.tgz".
+     * @since 0.4
+     */
+    class Name {
+        /**
+         * Full name.
+         */
+        private final String full;
+
+        /**
+         * Version which is extracted from the name.
+         */
+        private final String vrsn;
+
+        /**
+         * Ctor.
+         * @param full Full name
+         * @param vrsn Version from name
+         */
+        public Name(final String full, final String vrsn) {
+            this.full = full;
+            this.vrsn = vrsn;
+        }
+
+        /**
+         * Obtains full name.
+         * @return Full name.
+         */
+        public String full() {
+            return this.full;
+        }
+
+        /**
+         * Obtains version which is extracted from the name.
+         * @return Version which is extracted from the name.
+         */
+        public String version() {
+            return this.vrsn;
         }
     }
 }

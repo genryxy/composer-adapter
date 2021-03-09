@@ -23,9 +23,12 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Storage;
 import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.asto.test.TestResource;
 import com.artipie.composer.AstoRepository;
+import com.artipie.http.Headers;
 import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.hm.SliceHasResponse;
 import com.artipie.http.rq.RequestLine;
@@ -43,6 +46,7 @@ import org.junit.jupiter.params.provider.CsvSource;
  * Tests for {@link AddArchiveSlice}.
  *
  * @since 0.4
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 final class AddArchiveSliceTest {
     /**
@@ -95,7 +99,21 @@ final class AddArchiveSliceTest {
             new AddArchiveSlice(new AstoRepository(this.storage)),
             new SliceHasResponse(
                 new RsHasStatus(RsStatus.BAD_REQUEST),
-                new RequestLine(RqMethod.GET, "/bad/request")
+                new RequestLine(RqMethod.PUT, "/bad/request")
+            )
+        );
+    }
+
+    @Test
+    void returnsCreateStatus() {
+        final String archive = "log-1.1.3.zip";
+        MatcherAssert.assertThat(
+            new AddArchiveSlice(new AstoRepository(this.storage)),
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.CREATED),
+                new RequestLine(RqMethod.PUT, String.format("/%s", archive)),
+                Headers.EMPTY,
+                new Content.From(new TestResource(archive).asBytes())
             )
         );
     }

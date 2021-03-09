@@ -37,12 +37,14 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for {@link Archive.Zip}.
  * @since 0.4
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 final class ArchiveZipTest {
     @Test
     void obtainingComposerJsonWorks() {
         MatcherAssert.assertThat(
             new Archive.Zip(
+                new Archive.Name("name", "1.0.1"),
                 new Content.From(new TestResource("log-1.1.3.zip").asBytes())
             ).composer()
             .toCompletableFuture().join()
@@ -72,6 +74,7 @@ final class ArchiveZipTest {
         final Exception exc = Assertions.assertThrows(
             CompletionException.class,
             () -> new Archive.Zip(
+                new Archive.Name("some name", "1.0.2"),
                 new Content.From(ArchiveZipTest.emptyZip())
             ).composer()
             .toCompletableFuture().join()
