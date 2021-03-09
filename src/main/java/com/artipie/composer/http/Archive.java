@@ -83,8 +83,9 @@ public interface Archive {
                 .thenApply(
                     bytes -> {
                         try (
-                            ByteArrayInputStream bytearr = new ByteArrayInputStream(bytes);
-                            ZipArchiveInputStream zip = new ZipArchiveInputStream(bytearr)
+                            ZipArchiveInputStream zip = new ZipArchiveInputStream(
+                                new ByteArrayInputStream(bytes)
+                            )
                         ) {
                             ArchiveEntry entry;
                             while ((entry = zip.getNextZipEntry()) != null) {

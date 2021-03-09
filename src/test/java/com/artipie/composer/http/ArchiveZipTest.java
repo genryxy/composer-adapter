@@ -25,15 +25,20 @@ package com.artipie.composer.http;
 
 import com.artipie.asto.Content;
 import com.artipie.asto.test.TestResource;
+import java.io.ByteArrayOutputStream;
+import java.util.concurrent.CompletionException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link Archive.Zip}.
  * @since 0.4
  */
-public class ArchiveZipTest {
+final class ArchiveZipTest {
     @Test
     void obtainingComposerJsonWorks() {
         MatcherAssert.assertThat(
@@ -41,8 +46,47 @@ public class ArchiveZipTest {
                 new Content.From(new TestResource("log-1.1.3.zip").asBytes())
             ).composer()
             .toCompletableFuture().join()
-            .getString("name"),
-            new IsEqual<>("psr/log")
+            .toString(),
+            new IsEqual<>(
+                String.join(
+                    "",
+                    "{",
+                        "\"name\":\"psr/log\",",
+                        "\"description\":\"Common interface for logging libraries\",",
+                        "\"keywords\":[\"psr\",\"psr-3\",\"log\"],",
+                        "\"homepage\":\"https://github.com/php-fig/log\",",
+                        "\"license\":\"MIT\",",
+                        "\"authors\":[{\"name\":\"PHP-FIG\",",
+                        "\"homepage\":\"http://www.php-fig.org/\"}],",
+                        "\"require\":{\"php\":\">=5.3.0\"},",
+                        "\"autoload\":{\"psr-4\":{\"Psr\\\\Log\\\\\":\"Psr/Log/\"}},",
+                        "\"extra\":{\"branch-alias\":{\"dev-master\":\"1.1.x-dev\"}}",
+                        "}"
+                )
+            )
         );
+    }
+
+    @Test
+    void failsToObtainWhenFileIsAbsent() {
+        final Exception exc = Assertions.assertThrows(
+            CompletionException.class,
+            () -> new Archive.Zip(
+                new Content.From(ArchiveZipTest.emptyZip())
+            ).composer()
+            .toCompletableFuture().join()
+        );
+        MatcherAssert.assertThat(
+            exc.getCause().getMessage(),
+            new IsEqual<>("'composer.json' file was not found")
+        );
+    }
+
+    private static byte[] emptyZip() throws Exception {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(bos)) {
+            zip.putNextEntry(new ZipEntry("whatever"));
+        }
+        return bos.toByteArray();
     }
 }
