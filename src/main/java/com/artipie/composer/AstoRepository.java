@@ -28,6 +28,7 @@ import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
+import com.artipie.composer.http.Archive;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -74,7 +75,7 @@ public final class AstoRepository implements Repository {
     public CompletableFuture<Void> addJson(final Content content) {
         final Key key = new Key.From(UUID.randomUUID().toString());
         return this.storage.save(key, content).thenCompose(
-            saved -> this.storage.value(key)
+            nothing -> this.storage.value(key)
                 .thenApply(PublisherAs::new)
                 .thenCompose(PublisherAs::bytes)
                 .thenCompose(
@@ -108,7 +109,7 @@ public final class AstoRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Void> addZip(final Content content) {
+    public CompletableFuture<Void> addArchive(final Archive archive, final Content content) {
         throw new NotImplementedException("not implemented yet");
     }
 

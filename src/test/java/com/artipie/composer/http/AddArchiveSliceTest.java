@@ -40,11 +40,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /**
- * Tests for {@link AddZipSlice}.
+ * Tests for {@link AddArchiveSlice}.
  *
  * @since 0.4
  */
-final class AddZipSliceTest {
+final class AddArchiveSliceTest {
     /**
      * Test storage.
      */
@@ -67,7 +67,7 @@ final class AddZipSliceTest {
     void patternExtractsNameAndVersionCorrectly(
         final String url, final String name, final String vers
     ) {
-        final Matcher matcher = AddZipSlice.PATH.matcher(url);
+        final Matcher matcher = AddArchiveSlice.PATH.matcher(url);
         final String cname;
         final String cvers;
         if (matcher.matches()) {
@@ -92,7 +92,7 @@ final class AddZipSliceTest {
     @Test
     void returnsBadRequest() {
         MatcherAssert.assertThat(
-            new AddZipSlice(new AstoRepository(this.storage)),
+            new AddArchiveSlice(new AstoRepository(this.storage)),
             new SliceHasResponse(
                 new RsHasStatus(RsStatus.BAD_REQUEST),
                 new RequestLine(RqMethod.GET, "/bad/request")
