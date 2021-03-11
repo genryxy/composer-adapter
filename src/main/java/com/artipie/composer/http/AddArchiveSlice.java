@@ -23,9 +23,11 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Content;
 import com.artipie.composer.Repository;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
 import com.artipie.http.rq.RequestLineFrom;
 import com.artipie.http.rs.RsStatus;
 import com.artipie.http.rs.RsWithStatus;
@@ -33,7 +35,6 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.lang3.NotImplementedException;
 import org.reactivestreams.Publisher;
 
 /**
@@ -48,7 +49,7 @@ final class AddArchiveSlice implements Slice {
      * See <a href="https://getcomposer.org/doc/04-schema.md#version">docs</a>.
      */
     public static final Pattern PATH = Pattern.compile(
-        "^/(?<name>[a-z0-9_.\\-]*)-v?(?<version>\\d+.\\d+.\\d+[-\\w]*).zip$"
+        "^/(?<full>(?<name>[a-z0-9_.\\-]*)-(?<version>v?\\d+.\\d+.\\d+[-\\w]*).zip)$"
     );
 
     /**
@@ -75,7 +76,18 @@ final class AddArchiveSlice implements Slice {
         final Matcher matcher = AddArchiveSlice.PATH.matcher(uri);
         final Response resp;
         if (matcher.matches()) {
-            throw new NotImplementedException("not implemented yet");
+            final Content content = new Content.From(body);
+            resp = new AsyncResponse(
+                this.repository
+                    .addArchive(
+                        new Archive.Zip(
+                            new Archive.Name(matcher.group("full"), matcher.group("version")),
+                            content
+                        ),
+                        content
+                    )
+                    .thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
+            );
         } else {
             resp = new RsWithStatus(RsStatus.BAD_REQUEST);
         }

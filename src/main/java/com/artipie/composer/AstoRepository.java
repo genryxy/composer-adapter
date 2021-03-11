@@ -29,11 +29,13 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
 import com.artipie.composer.http.Archive;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.apache.commons.lang3.NotImplementedException;
+import java.util.function.Function;
+import javax.json.Json;
 
 /**
  * PHP Composer repository that stores packages in a {@link Storage}.
@@ -110,7 +112,25 @@ public final class AstoRepository implements Repository {
 
     @Override
     public CompletableFuture<Void> addArchive(final Archive archive, final Content content) {
-        throw new NotImplementedException("not implemented yet");
+        final Key key = new Key.From("artifacts", archive.name().full());
+        return this.storage.save(key, content)
+            .thenCompose(
+                nothing -> archive.composer()
+                    .thenApply(
+                        compos -> Json.createObjectBuilder(compos)
+                            .add("version", archive.name().version())
+                            .build()
+                            .toString()
+                            .getBytes(StandardCharsets.UTF_8)
+                    ).thenCombine(
+                        this.packages(),
+                        (bytes, packages) -> packages.orElse(new JsonPackages())
+                            .add(new JsonPackage(new Content.From(bytes)))
+                            .thenCompose(
+                                pkgs -> pkgs.save(this.storage, AstoRepository.ALL_PACKAGES)
+                            )
+                    )
+            ).thenCompose(Function.identity());
     }
 
     /**
