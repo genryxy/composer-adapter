@@ -49,7 +49,7 @@ final class AddArchiveSlice implements Slice {
      * See <a href="https://getcomposer.org/doc/04-schema.md#version">docs</a>.
      */
     public static final Pattern PATH = Pattern.compile(
-        "^/((?<name>[a-z0-9_.\\-]*)-(?<version>v?\\d+.\\d+.\\d+[-\\w]*).zip)$"
+        "^/(?<full>(?<name>[a-z0-9_.\\-]*)-(?<version>v?\\d+.\\d+.\\d+[-\\w]*).zip)$"
     );
 
     /**
@@ -81,7 +81,7 @@ final class AddArchiveSlice implements Slice {
                 this.repository
                     .addArchive(
                         new Archive.Zip(
-                            new Archive.Name(matcher.group(1), matcher.group("version")),
+                            new Archive.Name(matcher.group("full"), matcher.group("version")),
                             content
                         ),
                         content
