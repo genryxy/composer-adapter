@@ -36,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import javax.json.Json;
+import javax.json.JsonObject;
 
 /**
  * PHP Composer repository that stores packages in a {@link Storage}.
@@ -113,24 +114,48 @@ public final class AstoRepository implements Repository {
     @Override
     public CompletableFuture<Void> addArchive(final Archive archive, final Content content) {
         final Key key = new Key.From("artifacts", archive.name().full());
+        final Key prefix = new Key.From(UUID.randomUUID().toString());
+        final Key tmp = new Key.From(prefix, archive.name().full());
         return this.storage.save(key, content)
             .thenCompose(
-                nothing -> archive.composer()
-                    .thenApply(
-                        compos -> Json.createObjectBuilder(compos)
-                            .add("version", archive.name().version())
-                            .build()
-                            .toString()
-                            .getBytes(StandardCharsets.UTF_8)
-                    ).thenCombine(
-                        this.packages(),
-                        (bytes, packages) -> packages.orElse(new JsonPackages())
-                            .add(new JsonPackage(new Content.From(bytes)))
-                            .thenCompose(
-                                pkgs -> pkgs.save(this.storage, AstoRepository.ALL_PACKAGES)
-                            )
+                nothing -> this.storage.value(key)
+                    .thenCompose(
+                        cont -> archive.composerFrom(cont)
+                            .thenApply(
+                                compos -> AstoRepository.addVersion(compos, archive.name())
+                            ).thenCombine(
+                                this.storage.value(key),
+                                (compos, cnt) -> archive.replaceComposerWith(cnt, compos)
+                                    .thenCompose(arch -> this.storage.save(tmp, arch))
+                                    .thenCompose(noth -> this.storage.delete(key))
+                                    .thenCompose(noth -> this.storage.move(tmp, key))
+                                    .thenCombine(
+                                        this.packages(),
+                                        (noth, packages) -> packages.orElse(new JsonPackages())
+                                            .add(new JsonPackage(new Content.From(compos)))
+                                            .thenCompose(
+                                                pkgs -> pkgs.save(
+                                                    this.storage, AstoRepository.ALL_PACKAGES
+                                                )
+                                            )
+                                    )
+                            ).thenCompose(Function.identity())
                     )
             ).thenCompose(Function.identity());
+    }
+
+    /**
+     * Add version field to composer json.
+     * @param compos Composer json file
+     * @param name Instance of name for obtaining version
+     * @return Composer json with added version.
+     */
+    private static byte[] addVersion(final JsonObject compos, final Archive.Name name) {
+        return Json.createObjectBuilder(compos)
+            .add("version", name.version())
+            .build()
+            .toString()
+            .getBytes(StandardCharsets.UTF_8);
     }
 
     /**

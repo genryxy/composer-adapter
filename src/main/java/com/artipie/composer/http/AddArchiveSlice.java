@@ -76,15 +76,13 @@ final class AddArchiveSlice implements Slice {
         final Matcher matcher = AddArchiveSlice.PATH.matcher(uri);
         final Response resp;
         if (matcher.matches()) {
-            final Content content = new Content.From(body);
             resp = new AsyncResponse(
                 this.repository
                     .addArchive(
                         new Archive.Zip(
-                            new Archive.Name(matcher.group("full"), matcher.group("version")),
-                            content
+                            new Archive.Name(matcher.group("full"), matcher.group("version"))
                         ),
-                        content
+                        new Content.From(body)
                     )
                     .thenApply(nothing -> new RsWithStatus(RsStatus.CREATED))
             );

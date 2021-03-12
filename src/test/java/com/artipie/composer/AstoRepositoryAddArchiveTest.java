@@ -111,7 +111,7 @@ final class AstoRepositoryAddArchiveTest {
     private void saveZipArchive() {
         new AstoRepository(this.storage)
             .addArchive(
-                new Archive.Zip(this.name, this.archive),
+                new Archive.Zip(this.name),
                 this.archive
             ).join();
     }

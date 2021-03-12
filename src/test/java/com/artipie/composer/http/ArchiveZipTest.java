@@ -26,6 +26,7 @@ package com.artipie.composer.http;
 import com.artipie.asto.Content;
 import com.artipie.asto.test.TestResource;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletionException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -39,14 +40,14 @@ import org.junit.jupiter.api.Test;
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 final class ArchiveZipTest {
     @Test
     void obtainingComposerJsonWorks() {
         MatcherAssert.assertThat(
             new Archive.Zip(
-                new Archive.Name("name", "1.0.1"),
-                new Content.From(new TestResource("log-1.1.3.zip").asBytes())
-            ).composer()
+                new Archive.Name("name", "1.0.1")
+            ).composerFrom(new Content.From(new TestResource("log-1.1.3.zip").asBytes()))
             .toCompletableFuture().join()
             .toString(),
             new IsEqual<>(
@@ -70,13 +71,32 @@ final class ArchiveZipTest {
     }
 
     @Test
+    void replacesComposerWithAnotherOne() {
+        final byte[] target = new TestResource("log-composer-with-version.json").asBytes();
+        final String full = "log-1.1.3.zip";
+        final Archive.Name name = new Archive.Name(full, "1.1.3");
+        final Content updarch = new Archive.Zip(name)
+            .replaceComposerWith(
+                new Content.From(new TestResource(full).asBytes()),
+                target
+            ).toCompletableFuture().join();
+        MatcherAssert.assertThat(
+            new Archive.Zip(name)
+                .composerFrom(updarch)
+                .toCompletableFuture().join()
+                .toString()
+                .getBytes(StandardCharsets.UTF_8),
+            new IsEqual<>(target)
+        );
+    }
+
+    @Test
     void failsToObtainWhenFileIsAbsent() {
         final Exception exc = Assertions.assertThrows(
             CompletionException.class,
             () -> new Archive.Zip(
-                new Archive.Name("some name", "1.0.2"),
-                new Content.From(ArchiveZipTest.emptyZip())
-            ).composer()
+                new Archive.Name("some name", "1.0.2")
+            ).composerFrom(new Content.From(ArchiveZipTest.emptyZip()))
             .toCompletableFuture().join()
         );
         MatcherAssert.assertThat(
@@ -87,9 +107,9 @@ final class ArchiveZipTest {
 
     private static byte[] emptyZip() throws Exception {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try (ZipOutputStream zip = new ZipOutputStream(bos)) {
-            zip.putNextEntry(new ZipEntry("whatever"));
-        }
+        final ZipOutputStream zos = new ZipOutputStream(bos);
+        zos.putNextEntry(new ZipEntry("whatever"));
+        zos.close();
         return bos.toByteArray();
     }
 }

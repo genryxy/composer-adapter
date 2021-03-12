@@ -210,9 +210,9 @@ class RepositoryHttpIT {
 
     private static byte[] emptyZip() throws Exception {
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try (ZipOutputStream zip = new ZipOutputStream(bos)) {
-            zip.putNextEntry(new ZipEntry("whatever"));
-        }
+        final ZipOutputStream zos = new ZipOutputStream(bos);
+        zos.putNextEntry(new ZipEntry("whatever"));
+        zos.close();
         return bos.toByteArray();
     }
 }

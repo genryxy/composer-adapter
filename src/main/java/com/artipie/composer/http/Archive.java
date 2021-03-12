@@ -25,15 +25,17 @@ package com.artipie.composer.http;
 
 import com.artipie.asto.Content;
 import com.artipie.asto.ext.PublisherAs;
-import com.artipie.composer.misc.ContentAsJson;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.concurrent.CompletionStage;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import javax.json.Json;
 import javax.json.JsonObject;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
-import org.apache.commons.compress.utils.IOUtils;
 
 /**
  * Interface for working with archive file. For example, obtaining
@@ -43,9 +45,18 @@ import org.apache.commons.compress.utils.IOUtils;
 public interface Archive {
     /**
      * Obtains composer json file from archive.
+     * @param archive Content of archive file
      * @return Composer json file from archive.
      */
-    CompletionStage<JsonObject> composer();
+    CompletionStage<JsonObject> composerFrom(Content archive);
+
+    /**
+     * Replaces composer json file in existing archive with new one.
+     * @param archive Archive with existing composer json
+     * @param composer Composer json file that we will change the existing one to
+     * @return Archive with replaced composer json file
+     */
+    CompletionStage<Content> replaceComposerWith(Content archive, byte[] composer);
 
     /**
      * Obtains archive name.
@@ -57,47 +68,29 @@ public interface Archive {
      * Archive in ZIP format.
      * @since 0.4
      */
+    @SuppressWarnings("PMD.AssignmentInOperand")
     class Zip implements Archive {
         /**
-         * Content of ZIP archive.
+         * Composer json file name.
          */
-        private final Content content;
+        private static final String COMPOS = "composer.json";
 
         /**
-         * Archive file name.
+         * Path to archive file with its name.
          */
         private final Name cname;
 
         /**
          * Ctor.
          * @param name Name of archive file
-         * @param content Content of ZIP archive
          */
-        public Zip(final Name name, final Content content) {
+        public Zip(final Name name) {
             this.cname = name;
-            this.content = content;
         }
 
         @Override
-        public CompletionStage<JsonObject> composer() {
-            return this.file("composer.json")
-                .thenApply(ContentAsJson::new)
-                .thenCompose(ContentAsJson::value);
-        }
-
-        @Override
-        public Name name() {
-            return this.cname;
-        }
-
-        /**
-         * Obtain file by name.
-         * @param name The name of a file
-         * @return The file content.
-         */
-        @SuppressWarnings("PMD.AssignmentInOperand")
-        private CompletionStage<Content> file(final String name) {
-            return new PublisherAs(this.content).bytes()
+        public CompletionStage<JsonObject> composerFrom(final Content archive) {
+            return new PublisherAs(archive).bytes()
                 .thenApply(
                     bytes -> {
                         try (
@@ -108,18 +101,71 @@ public interface Archive {
                             ArchiveEntry entry;
                             while ((entry = zip.getNextZipEntry()) != null) {
                                 final String[] parts = entry.getName().split("/");
-                                if (parts[parts.length - 1].equals(name)) {
-                                    return new Content.From(IOUtils.toByteArray(zip));
+                                if (parts[parts.length - 1].equals(Zip.COMPOS)) {
+                                    return Json.createReader(zip).readObject();
                                 }
                             }
                             throw new IllegalStateException(
-                                String.format("'%s' file was not found", name)
+                                String.format("'%s' file was not found", Zip.COMPOS)
                             );
                         } catch (final IOException exc) {
                             throw new UncheckedIOException(exc);
                         }
                     }
-            );
+                );
+        }
+
+        @Override
+        public Name name() {
+            return this.cname;
+        }
+
+        // @checkstyle ExecutableStatementCountCheck (5 lines)
+        @Override
+        public CompletionStage<Content> replaceComposerWith(
+            final Content archive, final byte[] composer
+        ) {
+            return new PublisherAs(archive)
+                .bytes()
+                .thenApply(
+                    bytes -> {
+                        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        final ZipOutputStream zos = new ZipOutputStream(bos);
+                        try {
+                            try (
+                                ZipArchiveInputStream zip = new ZipArchiveInputStream(
+                                    new ByteArrayInputStream(bytes)
+                                )
+                            ) {
+                                ArchiveEntry entry;
+                                while ((entry = zip.getNextZipEntry()) != null) {
+                                    final ZipEntry newentr = new ZipEntry(entry.getName());
+                                    final boolean isdir = newentr.isDirectory();
+                                    final String[] parts = entry.getName().split("/");
+                                    if (parts[parts.length - 1].equals(Zip.COMPOS) && !isdir) {
+                                        zos.putNextEntry(newentr);
+                                        zos.write(composer);
+                                    } else if (!isdir) {
+                                        zos.putNextEntry(newentr);
+                                        // @checkstyle MagicNumberCheck (1 line)
+                                        final byte[] buf = new byte[1024];
+                                        int len;
+                                        while ((len = zip.read(buf)) > 0) {
+                                            zos.write(buf, 0, len);
+                                        }
+                                    }
+                                    zos.flush();
+                                    zos.closeEntry();
+                                }
+                            } finally {
+                                zos.close();
+                            }
+                        } catch (final IOException exc) {
+                            throw new UncheckedIOException(exc);
+                        }
+                        return bos.toByteArray();
+                    }
+                ).thenApply(Content.From::new);
         }
     }
 
