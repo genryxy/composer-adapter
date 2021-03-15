@@ -23,32 +23,18 @@
  */
 package com.artipie.composer.http;
 
-import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.asto.fs.FileStorage;
+import com.artipie.asto.test.TestResource;
 import com.artipie.composer.AstoRepository;
-import com.artipie.composer.test.ComposerSimple;
 import com.artipie.composer.test.HttpUrlUpload;
-import com.artipie.composer.test.PackageSimple;
-import com.artipie.composer.test.TestAuthentication;
-import com.artipie.files.FilesSlice;
-import com.artipie.http.Slice;
-import com.artipie.http.auth.JoinedPermissions;
-import com.artipie.http.auth.Permissions;
-import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -65,15 +51,15 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
- * Integration test for PHP Composer repository with auth.
+ * Integration test for PHP Composer repository for working
+ * with archive in ZIP format.
  *
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
- * @checkstyle ClassFanOutComplexityCheck (500 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-final class RepositoryHttpAuthIT {
+final class HttpZipArchiveIT {
     /**
      * Temporary directory.
      */
@@ -85,19 +71,9 @@ final class RepositoryHttpAuthIT {
     private Vertx vertx;
 
     /**
-     * Path to PHP project directory.
-     */
-    private Path project;
-
-    /**
      * HTTP server hosting repository.
      */
     private VertxSliceServer server;
-
-    /**
-     * HTTP source server.
-     */
-    private VertxSliceServer sourceserver;
 
     /**
      * Test container.
@@ -109,43 +85,26 @@ final class RepositoryHttpAuthIT {
      */
     private int port;
 
-    /**
-     * Source port for tgz archive.
-     */
-    private int sourceport;
-
     @BeforeEach
     void setUp() throws IOException {
         this.temp = Files.createTempDirectory("");
         this.vertx = Vertx.vertx();
-        this.project = this.temp.resolve("project");
-        this.project.toFile().mkdirs();
-        this.port = new RandomFreePort().get();
-        this.sourceport = new RandomFreePort().get();
-        final Slice slice = new PhpComposer(
-            new AstoRepository(new InMemoryStorage()),
-            new JoinedPermissions(
-                new Permissions.Single(TestAuthentication.ALICE.name(), "write"),
-                new Permissions.Single(TestAuthentication.ALICE.name(), "read")
-            ),
-            new TestAuthentication()
+        this.server = new VertxSliceServer(
+            this.vertx,
+            new LoggingSlice(new PhpComposer(new AstoRepository(new FileStorage(this.temp))))
         );
-        this.server = new VertxSliceServer(this.vertx, new LoggingSlice(slice), this.port);
-        this.server.start();
-        Testcontainers.exposeHostPorts(this.port, this.sourceport);
+        this.port = this.server.start();
+        Testcontainers.exposeHostPorts(this.port);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
-            .withFileSystemBind(this.project.toString(), "/home");
+            .withFileSystemBind(this.temp.toString(), "/home");
         this.cntn.start();
     }
 
     @AfterEach
     @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
-        if (this.sourceserver != null) {
-            this.sourceserver.stop();
-        }
         this.server.stop();
         this.vertx.close();
         this.cntn.stop();
@@ -157,19 +116,18 @@ final class RepositoryHttpAuthIT {
     }
 
     @Test
-    void shouldInstallAddedPackageWithAuth() throws Exception {
-        this.addPackage();
-        new ComposerSimple(this.url(TestAuthentication.ALICE))
-            .writeTo(this.project.resolve("composer.json"));
+    void shouldInstallAddedPackage() throws Exception {
+        this.addArchive();
+        this.writeComposer("artifacts");
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
                 new ListOf<Matcher<? super String>>(
-                    new StringContains(false, "Installs: vendor/package:1.1.2"),
-                    new StringContains(false, "- Downloading vendor/package (1.1.2)"),
+                    new StringContains(false, "Installs: psr/log:1.1.3"),
+                    new StringContains(false, "- Downloading psr/log (1.1.3)"),
                     new StringContains(
                         false,
-                        "- Installing vendor/package (1.1.2): Extracting archive"
+                        "- Installing psr/log (1.1.3): Extracting archive"
                     )
                 )
             )
@@ -177,35 +135,53 @@ final class RepositoryHttpAuthIT {
     }
 
     @Test
-    void returnsUnauthorizedWhenUserIsUnknown() throws Exception {
-        this.addPackage();
-        new ComposerSimple(this.url(TestAuthentication.BOB))
-            .writeTo(this.project.resolve("composer.json"));
+    void shouldFailGetAbsentInArtifactsPackage() throws Exception {
+        this.temp.resolve("artifacts").toFile().mkdir();
+        this.writeComposer("artifacts");
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
-            new StringContains("URL required authentication")
+            new StringContains(
+                "Root composer.json requires psr/log, it could not be found in any version"
+            )
         );
     }
 
-    private void addPackage() throws Exception {
+    @Test
+    void shouldFailGetPackageInCaseOfWrongUrl() throws Exception {
+        final String wrong = "wrongfolder";
+        this.temp.resolve(wrong).toFile().mkdir();
+        this.addArchive();
+        this.writeComposer(wrong);
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new StringContains(
+                "Root composer.json requires psr/log, it could not be found in any version"
+            )
+        );
+    }
+
+    private void addArchive() throws Exception {
+        final String name = "log-1.1.3.zip";
         new HttpUrlUpload(
-            String.format("http://localhost:%s", this.port),
-            new PackageSimple(
-                this.upload(RepositoryHttpAuthIT.emptyZip(), this.sourceport)
-            ).value()
-            .getBytes()
-        ).upload(Optional.of(TestAuthentication.ALICE));
+            String.format("http://localhost:%d/%s", this.port, name),
+            new TestResource(name).asBytes()
+        ).upload(Optional.empty());
     }
 
-    private String upload(final byte[] content, final int freeport) {
-        final Storage files = new InMemoryStorage();
-        final String name = UUID.randomUUID().toString();
-        new BlockingStorage(files).save(new Key.From(name), content);
-        this.sourceserver = new VertxSliceServer(
-            this.vertx, new LoggingSlice(new FilesSlice(files)), freeport
+    private void writeComposer(final String path) throws IOException {
+        Files.write(
+            this.temp.resolve("composer.json"),
+            String.join(
+                "",
+                "{",
+                "\"repositories\": [",
+                String.format("{\"type\": \"artifact\", \"url\": \"%s\"},", path),
+                "{\"packagist.org\": false}",
+                "],",
+                "\"require\": { \"psr/log\": \"1.1.3\" }",
+                "}"
+            ).getBytes()
         );
-        this.sourceserver.start();
-        return String.format("http://host.testcontainers.internal:%d/%s", freeport, name);
     }
 
     private String exec(final String... command) throws Exception {
@@ -216,22 +192,5 @@ final class RepositoryHttpAuthIT {
         );
         Logger.debug(this, log);
         return log;
-    }
-
-    private String url(final TestAuthentication.User user) {
-        return String.format(
-            "http://%s:%s@host.testcontainers.internal:%d",
-            user.name(),
-            user.password(),
-            this.port
-        );
-    }
-
-    private static byte[] emptyZip() throws Exception {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zos = new ZipOutputStream(bos);
-        zos.putNextEntry(new ZipEntry("whatever"));
-        zos.close();
-        return bos.toByteArray();
     }
 }

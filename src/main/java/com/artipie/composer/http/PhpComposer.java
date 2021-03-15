@@ -78,6 +78,17 @@ public final class PhpComposer extends Slice.Wrap {
                         auth,
                         new Permission.ByName(perms, Action.Standard.WRITE)
                     )
+                ),
+                new RtRulePath(
+                    new RtRule.All(
+                        new RtRule.ByPath(AddArchiveSlice.PATH),
+                        ByMethodsRule.Standard.PUT
+                    ),
+                    new BasicAuthSlice(
+                        new AddArchiveSlice(repository),
+                        auth,
+                        new Permission.ByName(perms, Action.Standard.WRITE)
+                    )
                 )
             )
         );
