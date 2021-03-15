@@ -34,6 +34,7 @@ import com.artipie.http.rt.ByMethodsRule;
 import com.artipie.http.rt.RtRule;
 import com.artipie.http.rt.RtRulePath;
 import com.artipie.http.rt.SliceRoute;
+import java.util.regex.Pattern;
 
 /**
  * PHP Composer repository HTTP front end.
@@ -70,7 +71,7 @@ public final class PhpComposer extends Slice.Wrap {
                 ),
                 new RtRulePath(
                     new RtRule.All(
-                        new RtRule.ByPath(DownloadArchiveSlice.PATH),
+                        new RtRule.ByPath(Pattern.compile("^/?artifacts/.*\\.zip$")),
                         ByMethodsRule.Standard.GET
                     ),
                     new BasicAuthSlice(

@@ -36,7 +36,6 @@ import com.artipie.http.rq.RequestLine;
 import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
 import org.hamcrest.MatcherAssert;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -45,35 +44,15 @@ import org.junit.jupiter.api.Test;
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 final class DownloadArchiveSliceTest {
-    /**
-     * Test storage.
-     */
-    private Storage storage;
-
-    @BeforeEach
-    void setUp() {
-        this.storage = new InMemoryStorage();
-    }
-
-    @Test
-    void returnsBadRequest() {
-        MatcherAssert.assertThat(
-            new DownloadArchiveSlice(new AstoRepository(this.storage)),
-            new SliceHasResponse(
-                new RsHasStatus(RsStatus.BAD_REQUEST),
-                new RequestLine(RqMethod.GET, "/bad/request")
-            )
-        );
-    }
-
     @Test
     void returnsOkStatus() {
+        final Storage storage = new InMemoryStorage();
         final String archive = "log-1.1.3.zip";
         final Key key = new Key.From("artifacts", archive);
         new TestResource(archive)
-            .saveTo(this.storage, key);
+            .saveTo(storage, key);
         MatcherAssert.assertThat(
-            new DownloadArchiveSlice(new AstoRepository(this.storage)),
+            new DownloadArchiveSlice(new AstoRepository(storage)),
             new SliceHasResponse(
                 new RsHasStatus(RsStatus.OK),
                 new RequestLine(RqMethod.GET, key.string()),

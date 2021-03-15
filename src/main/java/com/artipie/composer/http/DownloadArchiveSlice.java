@@ -34,8 +34,6 @@ import com.artipie.http.rs.RsWithStatus;
 import com.artipie.http.slice.KeyFromPath;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.reactivestreams.Publisher;
 
 /**
@@ -43,11 +41,6 @@ import org.reactivestreams.Publisher;
  * @since 0.4
  */
 final class DownloadArchiveSlice implements Slice {
-    /**
-     * Pattern for uploading archives endpoint.
-     */
-    static final Pattern PATH = Pattern.compile("^/?artifacts/.*\\.zip$");
-
     /**
      * Repository.
      */
@@ -67,19 +60,11 @@ final class DownloadArchiveSlice implements Slice {
         final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body
     ) {
-        final RequestLineFrom rqline = new RequestLineFrom(line);
-        final String uri = rqline.uri().getPath();
-        final Matcher matcher = DownloadArchiveSlice.PATH.matcher(uri);
-        final Response resp;
-        if (matcher.matches()) {
-            resp = new AsyncResponse(
-                this.repos.value(new KeyFromPath(uri))
-                    .thenApply(RsWithBody::new)
-                    .thenApply(rsp -> new RsWithStatus(rsp, RsStatus.OK))
-            );
-        }  else {
-            resp = new RsWithStatus(RsStatus.BAD_REQUEST);
-        }
-        return resp;
+        final String path = new RequestLineFrom(line).uri().getPath();
+        return new AsyncResponse(
+            this.repos.value(new KeyFromPath(path))
+                .thenApply(RsWithBody::new)
+                .thenApply(rsp -> new RsWithStatus(rsp, RsStatus.OK))
+        );
     }
 }
