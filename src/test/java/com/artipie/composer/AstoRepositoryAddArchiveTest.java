@@ -31,6 +31,7 @@ import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.composer.http.Archive;
 import com.artipie.composer.misc.ContentAsJson;
+import java.util.Optional;
 import javax.json.JsonObject;
 import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
@@ -109,7 +110,7 @@ final class AstoRepositoryAddArchiveTest {
     }
 
     private void saveZipArchive() {
-        new AstoRepository(this.storage)
+        new AstoRepository(this.storage, Optional.of("http://artipie:8080/"))
             .addArchive(
                 new Archive.Zip(this.name),
                 this.archive

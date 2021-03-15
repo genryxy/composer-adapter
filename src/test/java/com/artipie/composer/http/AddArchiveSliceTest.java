@@ -34,6 +34,7 @@ import com.artipie.http.hm.SliceHasResponse;
 import com.artipie.http.rq.RequestLine;
 import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rs.RsStatus;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
@@ -107,8 +108,11 @@ final class AddArchiveSliceTest {
     @Test
     void returnsCreateStatus() {
         final String archive = "log-1.1.3.zip";
+        final AstoRepository asto = new AstoRepository(
+            this.storage, Optional.of("http://artipie:8080/")
+        );
         MatcherAssert.assertThat(
-            new AddArchiveSlice(new AstoRepository(this.storage)),
+            new AddArchiveSlice(asto),
             new SliceHasResponse(
                 new RsHasStatus(RsStatus.CREATED),
                 new RequestLine(RqMethod.PUT, String.format("/%s", archive)),
