@@ -25,6 +25,7 @@
 package com.artipie.composer;
 
 import com.artipie.asto.Content;
+import com.artipie.asto.Key;
 import com.artipie.composer.http.Archive;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -69,4 +70,11 @@ public interface Repository {
      * @return Completion of adding package to repository.
      */
     CompletableFuture<Void> addArchive(Archive archive, Content content);
+
+    /**
+     * Obtain bytes by key.
+     * @param key The key
+     * @return Bytes.
+     */
+    CompletableFuture<Content> value(Key key);
 }

@@ -29,6 +29,8 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.ext.PublisherAs;
 import com.artipie.composer.http.Archive;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,12 +58,26 @@ public final class AstoRepository implements Repository {
     private final Storage storage;
 
     /**
+     * Prefix with url for uploaded archive.
+     */
+    private final Optional<String> prefix;
+
+    /**
      * Ctor.
-     *
      * @param storage Storage to store all repository data.
      */
     public AstoRepository(final Storage storage) {
+        this(storage, Optional.empty());
+    }
+
+    /**
+     * Ctor.
+     * @param storage Storage to store all repository data.
+     * @param prefix Prefix with url for uploaded archive.
+     */
+    public AstoRepository(final Storage storage, final Optional<String> prefix) {
         this.storage = storage;
+        this.prefix = prefix;
     }
 
     @Override
@@ -114,8 +130,8 @@ public final class AstoRepository implements Repository {
     @Override
     public CompletableFuture<Void> addArchive(final Archive archive, final Content content) {
         final Key key = new Key.From("artifacts", archive.name().full());
-        final Key prefix = new Key.From(UUID.randomUUID().toString());
-        final Key tmp = new Key.From(prefix, archive.name().full());
+        final Key rand = new Key.From(UUID.randomUUID().toString());
+        final Key tmp = new Key.From(rand, archive.name().full());
         return this.storage.save(key, content)
             .thenCompose(
                 nothing -> this.storage.value(key)
@@ -125,23 +141,35 @@ public final class AstoRepository implements Repository {
                                 compos -> AstoRepository.addVersion(compos, archive.name())
                             ).thenCombine(
                                 this.storage.value(key),
-                                (compos, cnt) -> archive.replaceComposerWith(cnt, compos)
-                                    .thenCompose(arch -> this.storage.save(tmp, arch))
-                                    .thenCompose(noth -> this.storage.delete(key))
-                                    .thenCompose(noth -> this.storage.move(tmp, key))
-                                    .thenCombine(
-                                        this.packages(),
-                                        (noth, packages) -> packages.orElse(new JsonPackages())
-                                            .add(new JsonPackage(new Content.From(compos)))
-                                            .thenCompose(
-                                                pkgs -> pkgs.save(
-                                                    this.storage, AstoRepository.ALL_PACKAGES
-                                                )
+                                (compos, cnt) -> archive.replaceComposerWith(
+                                    cnt,
+                                    compos.toString()
+                                        .getBytes(StandardCharsets.UTF_8)
+                                ).thenCompose(arch -> this.storage.save(tmp, arch))
+                                .thenCompose(noth -> this.storage.delete(key))
+                                .thenCompose(noth -> this.storage.move(tmp, key))
+                                .thenCombine(
+                                    this.packages(),
+                                    (noth, packages) -> packages.orElse(new JsonPackages())
+                                        .add(
+                                            new JsonPackage(
+                                                new Content.From(this.addDist(compos, key))
                                             )
-                                    )
+                                        )
+                                        .thenCompose(
+                                            pkgs -> pkgs.save(
+                                                this.storage, AstoRepository.ALL_PACKAGES
+                                            )
+                                        )
+                                ).thenCompose(Function.identity())
                             ).thenCompose(Function.identity())
                     )
-            ).thenCompose(Function.identity());
+            );
+    }
+
+    @Override
+    public CompletableFuture<Content> value(final Key key) {
+        return this.storage.value(key);
     }
 
     /**
@@ -150,12 +178,37 @@ public final class AstoRepository implements Repository {
      * @param name Instance of name for obtaining version
      * @return Composer json with added version.
      */
-    private static byte[] addVersion(final JsonObject compos, final Archive.Name name) {
+    private static JsonObject addVersion(final JsonObject compos, final Archive.Name name) {
         return Json.createObjectBuilder(compos)
             .add("version", name.version())
-            .build()
-            .toString()
-            .getBytes(StandardCharsets.UTF_8);
+            .build();
+    }
+
+    /**
+     * Add `dist` field to composer json.
+     * @param compos Composer json file
+     * @param path Prefix path for uploading tgz archive
+     * @return Composer json with added `dist` field.
+     */
+    private byte[] addDist(final JsonObject compos, final Key path) {
+        final String url = this.prefix.orElseThrow(
+            () -> new IllegalStateException("Prefix url for `dist` for uploaded archive was empty.")
+        ).replaceAll("/$", "");
+        try {
+            return Json.createObjectBuilder(compos).add(
+                "dist", Json.createObjectBuilder()
+                    .add("url", new URI(String.format("%s/%s", url, path.string())).toString())
+                    .add("type", "zip")
+                    .build()
+                ).build()
+                .toString()
+                .getBytes(StandardCharsets.UTF_8);
+        } catch (final URISyntaxException exc) {
+            throw new IllegalStateException(
+                String.format("Failed to combine url `%s` with path `%s`", url, path.string()),
+                exc
+            );
+        }
     }
 
     /**

@@ -26,7 +26,9 @@ package com.artipie.composer.http;
 import com.artipie.asto.fs.FileStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.composer.AstoRepository;
+import com.artipie.composer.test.ComposerSimple;
 import com.artipie.composer.test.HttpUrlUpload;
+import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
@@ -63,7 +65,7 @@ final class HttpZipArchiveIT {
     /**
      * Temporary directory.
      */
-    private Path temp;
+    private Path tmp;
 
     /**
      * Vert.x instance to use in tests.
@@ -81,24 +83,35 @@ final class HttpZipArchiveIT {
     private GenericContainer<?> cntn;
 
     /**
+     * Server url.
+     */
+    private String url;
+
+    /**
      * Server port.
      */
     private int port;
 
     @BeforeEach
     void setUp() throws IOException {
-        this.temp = Files.createTempDirectory("");
+        this.tmp = Files.createTempDirectory("");
         this.vertx = Vertx.vertx();
+        this.port = new RandomFreePort().get();
+        this.url = String.format("http://host.testcontainers.internal:%s", this.port);
+        final AstoRepository asto = new AstoRepository(
+            new FileStorage(this.tmp), Optional.of(this.url)
+        );
         this.server = new VertxSliceServer(
             this.vertx,
-            new LoggingSlice(new PhpComposer(new AstoRepository(new FileStorage(this.temp))))
+            new LoggingSlice(new PhpComposer(asto)),
+            this.port
         );
-        this.port = this.server.start();
+        this.server.start();
         Testcontainers.exposeHostPorts(this.port);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
-            .withFileSystemBind(this.temp.toString(), "/home");
+            .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
     }
 
@@ -109,14 +122,34 @@ final class HttpZipArchiveIT {
         this.vertx.close();
         this.cntn.stop();
         try {
-            FileUtils.cleanDirectory(this.temp.toFile());
+            FileUtils.cleanDirectory(this.tmp.toFile());
         } catch (final IOException ex) {
             ex.printStackTrace();
         }
     }
 
     @Test
-    void shouldInstallAddedPackage() throws Exception {
+    void shouldInstallAddedPackageThroughComposerRepo() throws Exception {
+        this.addArchive();
+        new ComposerSimple(this.url, "psr/log", "1.1.3")
+            .writeTo(this.tmp.resolve("composer.json"));
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new AllOf<>(
+                new ListOf<Matcher<? super String>>(
+                    new StringContains(false, "Installs: psr/log:1.1.3"),
+                    new StringContains(false, "- Downloading psr/log (1.1.3)"),
+                    new StringContains(
+                        false,
+                        "- Installing psr/log (1.1.3): Extracting archive"
+                    )
+                )
+            )
+        );
+    }
+
+    @Test
+    void shouldInstallAddedPackageThroughArtifactsRepo() throws Exception {
         this.addArchive();
         this.writeComposer("artifacts");
         MatcherAssert.assertThat(
@@ -136,7 +169,7 @@ final class HttpZipArchiveIT {
 
     @Test
     void shouldFailGetAbsentInArtifactsPackage() throws Exception {
-        this.temp.resolve("artifacts").toFile().mkdir();
+        this.tmp.resolve("artifacts").toFile().mkdir();
         this.writeComposer("artifacts");
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
@@ -149,7 +182,7 @@ final class HttpZipArchiveIT {
     @Test
     void shouldFailGetPackageInCaseOfWrongUrl() throws Exception {
         final String wrong = "wrongfolder";
-        this.temp.resolve(wrong).toFile().mkdir();
+        this.tmp.resolve(wrong).toFile().mkdir();
         this.addArchive();
         this.writeComposer(wrong);
         MatcherAssert.assertThat(
@@ -170,7 +203,7 @@ final class HttpZipArchiveIT {
 
     private void writeComposer(final String path) throws IOException {
         Files.write(
-            this.temp.resolve("composer.json"),
+            this.tmp.resolve("composer.json"),
             String.join(
                 "",
                 "{",
