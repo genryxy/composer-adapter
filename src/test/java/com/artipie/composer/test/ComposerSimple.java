@@ -38,11 +38,33 @@ public final class ComposerSimple {
     private final String url;
 
     /**
-     * Ctor.
+     * Package name.
+     */
+    private final String pkg;
+
+    /**
+     * Version of package for uploading.
+     */
+    private final String vers;
+
+    /**
+     * Ctor with default value for package name and version.
      * @param url Repository url
      */
     public ComposerSimple(final String url) {
+        this(url, "vendor/package", "1.1.2");
+    }
+
+    /**
+     * Ctor.
+     * @param url Repository url
+     * @param pkg Package name
+     * @param vers Version of package for uploading
+     */
+    public ComposerSimple(final String url, final String pkg, final String vers) {
         this.url = url;
+        this.pkg = pkg;
+        this.vers = vers;
     }
 
     /**
@@ -67,7 +89,7 @@ public final class ComposerSimple {
             String.format("{\"type\": \"composer\", \"url\": \"%s\"},", this.url),
             "{\"packagist.org\": false} ",
             "],",
-            "\"require\": { \"vendor/package\": \"1.1.2\" }",
+            String.format("\"require\": { \"%s\": \"%s\" }", this.pkg, this.vers),
             "}"
         ).getBytes();
     }

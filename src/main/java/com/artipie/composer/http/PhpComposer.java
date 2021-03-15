@@ -70,6 +70,17 @@ public final class PhpComposer extends Slice.Wrap {
                 ),
                 new RtRulePath(
                     new RtRule.All(
+                        new RtRule.ByPath(DownloadArchiveSlice.PATH),
+                        ByMethodsRule.Standard.GET
+                    ),
+                    new BasicAuthSlice(
+                        new DownloadArchiveSlice(repository),
+                        auth,
+                        new Permission.ByName(perms, Action.Standard.READ)
+                    )
+                ),
+                new RtRulePath(
+                    new RtRule.All(
                         new RtRule.ByPath(AddSlice.PATH_PATTERN),
                         ByMethodsRule.Standard.PUT
                     ),
