@@ -72,7 +72,7 @@ public class ComposerProxySlice extends Slice.Wrap {
      * @param remote Remote URI
      * @param auth Authenticator
      * @param cache Repository cache
-     * @checkstyle ParameterNumberCheck (500 lines)
+     * @checkstyle ParameterNumberCheck (6 lines)
      */
     public ComposerProxySlice(
         final ClientSlices clients,
