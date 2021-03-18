@@ -23,19 +23,31 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Content;
+import com.artipie.asto.Key;
 import com.artipie.asto.cache.Cache;
+import com.artipie.asto.cache.CacheControl;
+import com.artipie.asto.cache.Remote;
+import com.artipie.http.Headers;
 import com.artipie.http.Response;
 import com.artipie.http.Slice;
+import com.artipie.http.async.AsyncResponse;
+import com.artipie.http.rq.RequestLineFrom;
+import com.artipie.http.rs.RsWithBody;
+import com.artipie.http.rs.StandardRs;
+import com.artipie.http.slice.KeyFromPath;
+import io.reactivex.Flowable;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import org.apache.commons.lang3.NotImplementedException;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import org.reactivestreams.Publisher;
 
 /**
  * Composer proxy slice with cache support.
  * @since 0.4
  */
-@SuppressWarnings({"PMD.UnusedPrivateField", "PMD.SingularField"})
 final class CachedProxySlice implements Slice {
     /**
      * Origin slice.
@@ -63,6 +75,49 @@ final class CachedProxySlice implements Slice {
         final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body
     ) {
-        throw new NotImplementedException("not implemented yet");
+        final RequestLineFrom req = new RequestLineFrom(line);
+        final Key key = new KeyFromPath(req.uri().getPath());
+        return new AsyncResponse(
+            this.cache.load(
+                key,
+                new Remote.WithErrorHandling(
+                    () -> {
+                        final CompletableFuture<Optional<? extends Content>> promise;
+                        promise = new CompletableFuture<>();
+                        this.origin.response(line, Headers.EMPTY, Content.EMPTY).send(
+                            (rsstatus, rsheaders, rsbody) -> {
+                                final CompletableFuture<Void> term = new CompletableFuture<>();
+                                if (rsstatus.success()) {
+                                    final Flowable<ByteBuffer> flow = Flowable.fromPublisher(rsbody)
+                                        .doOnError(term::completeExceptionally)
+                                        .doOnTerminate(() -> term.complete(null));
+                                    promise.complete(Optional.of(new Content.From(flow)));
+                                } else {
+                                    promise.complete(Optional.empty());
+                                }
+                                return term;
+                            }
+                        );
+                        return promise;
+                    }
+                ),
+                CacheControl.Standard.ALWAYS
+            ).handle(
+                (content, throwable) -> {
+                    final CompletableFuture<Response> res = new CompletableFuture<>();
+                    if (throwable == null && content.isPresent()) {
+                        res.complete(
+                            new RsWithBody(
+                                StandardRs.OK,
+                                content.get()
+                            )
+                        );
+                    } else {
+                        res.complete(StandardRs.NOT_FOUND);
+                    }
+                    return res;
+                }
+            ).thenCompose(Function.identity())
+        );
     }
 }
