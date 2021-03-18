@@ -30,9 +30,10 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.cache.FromRemoteCache;
 import com.artipie.asto.memory.InMemoryStorage;
-import com.artipie.http.Headers;
+import com.artipie.http.Response;
 import com.artipie.http.headers.ContentLength;
 import com.artipie.http.hm.RsHasBody;
+import com.artipie.http.hm.RsHasHeaders;
 import com.artipie.http.hm.RsHasStatus;
 import com.artipie.http.hm.SliceHasResponse;
 import com.artipie.http.rq.RequestLine;
@@ -42,7 +43,10 @@ import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.RsWithStatus;
 import com.artipie.http.rs.StandardRs;
 import com.artipie.http.slice.SliceSimple;
+import org.cactoos.list.ListOf;
+import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.AllOf;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,10 +83,14 @@ final class CachedProxySliceTest {
                 new FromRemoteCache(this.storage)
             ),
             new SliceHasResponse(
-                new RsHasStatus(RsStatus.OK),
-                new RequestLine(RqMethod.GET, String.format("/%s", key.string())),
-                new Headers.From(new ContentLength(remote.length)),
-                new Content.From(remote)
+                new AllOf<>(
+                    new ListOf<Matcher<? super Response>>(
+                        new RsHasStatus(RsStatus.OK),
+                        new RsHasHeaders(new ContentLength(remote.length)),
+                        new RsHasBody(remote)
+                    )
+                ),
+                new RequestLine(RqMethod.GET, String.format("/%s", key.string()))
             )
         );
         MatcherAssert.assertThat(
@@ -128,10 +136,12 @@ final class CachedProxySliceTest {
                 new FromRemoteCache(this.storage)
             ),
             new SliceHasResponse(
-                new RsHasStatus(RsStatus.OK),
-                new RequestLine(RqMethod.GET, String.format("/%s", key.string())),
-                Headers.EMPTY,
-                new Content.From(body)
+                new AllOf<>(
+                    new RsHasStatus(RsStatus.OK),
+                    new RsHasHeaders(new ContentLength(body.length)),
+                    new RsHasBody(body)
+                ),
+                new RequestLine(RqMethod.GET, String.format("/%s", key.string()))
             )
         );
         MatcherAssert.assertThat(
