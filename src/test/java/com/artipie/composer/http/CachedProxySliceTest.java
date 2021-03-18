@@ -137,9 +137,11 @@ final class CachedProxySliceTest {
             ),
             new SliceHasResponse(
                 new AllOf<>(
-                    new RsHasStatus(RsStatus.OK),
-                    new RsHasHeaders(new ContentLength(body.length)),
-                    new RsHasBody(body)
+                    new ListOf<Matcher<? super Response>>(
+                        new RsHasStatus(RsStatus.OK),
+                        new RsHasHeaders(new ContentLength(body.length)),
+                        new RsHasBody(body)
+                    )
                 ),
                 new RequestLine(RqMethod.GET, String.format("/%s", key.string()))
             )
