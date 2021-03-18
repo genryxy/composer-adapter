@@ -23,9 +23,166 @@
  */
 package com.artipie.composer.http;
 
+import com.artipie.asto.Content;
+import com.artipie.asto.FailedCompletionStage;
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
+import com.artipie.asto.blocking.BlockingStorage;
+import com.artipie.asto.cache.FromRemoteCache;
+import com.artipie.asto.memory.InMemoryStorage;
+import com.artipie.http.Headers;
+import com.artipie.http.hm.RsHasBody;
+import com.artipie.http.hm.RsHasStatus;
+import com.artipie.http.hm.SliceHasResponse;
+import com.artipie.http.rq.RequestLine;
+import com.artipie.http.rq.RqMethod;
+import com.artipie.http.rs.RsStatus;
+import com.artipie.http.rs.RsWithBody;
+import com.artipie.http.rs.RsWithStatus;
+import com.artipie.http.rs.StandardRs;
+import com.artipie.http.slice.SliceSimple;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.core.AllOf;
+import org.hamcrest.core.IsEqual;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 /**
  * Tests for {@link CachedProxySlice}.
  * @since 0.4
+ * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 final class CachedProxySliceTest {
+    /**
+     * Test storage.
+     */
+    private Storage storage;
+
+    @BeforeEach
+    void init() {
+        this.storage = new InMemoryStorage();
+    }
+
+    @Test
+    void loadsFromRemoteAndOverrideCachedContent() {
+        final byte[] cached = "cache".getBytes();
+        final byte[] remote = "remote content".getBytes();
+        final Key key = new Key.From("my_key");
+        this.storage.save(key, new Content.From(cached)).join();
+        MatcherAssert.assertThat(
+            "Returns body from remote",
+            new CachedProxySlice(
+                new SliceSimple(
+                    new RsWithBody(StandardRs.OK, new Content.From(remote))
+                ),
+                new FromRemoteCache(this.storage)
+            ),
+            new SliceHasResponse(
+                new AllOf<>(
+                    new RsHasStatus(RsStatus.OK),
+                    new RsHasBody(remote)
+                ),
+                new RequestLine(RqMethod.GET, String.format("/%s", key.string()))
+            )
+        );
+        MatcherAssert.assertThat(
+            "Overrides existed value in cache",
+            new BlockingStorage(this.storage).value(key),
+            new IsEqual<>(remote)
+        );
+    }
+
+    @Test
+    void getsContentFromRemoteAndCachesIt() {
+        final byte[] body = "some info".getBytes();
+        final String key = "key";
+        MatcherAssert.assertThat(
+            "Returns body from remote",
+            new CachedProxySlice(
+                new SliceSimple(
+                    new RsWithBody(StandardRs.OK, new Content.From(body))
+                ),
+                new FromRemoteCache(this.storage)
+            ),
+            new SliceHasResponse(
+                new RsHasBody(body),
+                new RequestLine(RqMethod.GET, String.format("/%s", key))
+            )
+        );
+        MatcherAssert.assertThat(
+            "Stores value in cache",
+            new BlockingStorage(this.storage).value(new Key.From(key)),
+            new IsEqual<>(body)
+        );
+    }
+
+    @Test
+    void getsFromCacheOnRemoteSliceError() {
+        final byte[] body = "some data".getBytes();
+        final Key key = new Key.From("key");
+        new BlockingStorage(this.storage).save(key, body);
+        MatcherAssert.assertThat(
+            "Returns body from cache",
+            new CachedProxySlice(
+                new SliceSimple(new RsWithStatus(RsStatus.INTERNAL_ERROR)),
+                new FromRemoteCache(this.storage)
+            ),
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.OK),
+                new RequestLine(RqMethod.GET, String.format("/%s", key.string())),
+                Headers.EMPTY,
+                new Content.From(body)
+            )
+        );
+        MatcherAssert.assertThat(
+            "Data is intact in cache",
+            new BlockingStorage(this.storage).value(key),
+            new IsEqual<>(body)
+        );
+    }
+
+    @Test
+    void returnsNotFoundWhenRemoteReturnedBadRequest() {
+        MatcherAssert.assertThat(
+            "Status 400 is returned",
+            new CachedProxySlice(
+                new SliceSimple(new RsWithStatus(RsStatus.BAD_REQUEST)),
+                new FromRemoteCache(this.storage)
+            ),
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.NOT_FOUND),
+                new RequestLine(RqMethod.GET, "/any/request")
+            )
+        );
+        this.assertEmptyCache();
+    }
+
+    @Test
+    void returnsNotFoundOnRemoteAndCacheError() {
+        MatcherAssert.assertThat(
+            "Status is 400 returned",
+            new CachedProxySlice(
+                new SliceSimple(new RsWithStatus(RsStatus.BAD_REQUEST)),
+                (key, remote, cache) ->
+                    new FailedCompletionStage<>(
+                        new IllegalStateException("Failed to obtain item from cache")
+                    )
+            ),
+            new SliceHasResponse(
+                new RsHasStatus(RsStatus.NOT_FOUND),
+                new RequestLine(RqMethod.GET, "/any")
+            )
+        );
+        this.assertEmptyCache();
+    }
+
+    private void assertEmptyCache() {
+        MatcherAssert.assertThat(
+            "Cache storage is empty",
+            this.storage.list(Key.ROOT)
+                .join().isEmpty(),
+            new IsEqual<>(true)
+        );
+    }
 }
