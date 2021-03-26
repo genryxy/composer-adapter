@@ -45,13 +45,14 @@ import org.reactivestreams.Publisher;
  *
  * @since 0.3
  */
-final class PackageMetadataSlice implements Slice {
+public final class PackageMetadataSlice implements Slice {
 
     /**
      * RegEx pattern for package metadata path.
+     * According to <a href="https://packagist.org/apidoc#get-package-data">docs</a>.
      */
     public static final Pattern PACKAGE = Pattern.compile(
-        "/p/(?<vendor>[^/]+)/(?<package>[^/]+)\\.json$"
+        "/p2?/(?<vendor>[^/]+)/(?<package>[^/]+)\\.json$"
     );
 
     /**
