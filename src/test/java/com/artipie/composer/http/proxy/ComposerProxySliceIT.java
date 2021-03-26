@@ -143,7 +143,7 @@ final class ComposerProxySliceIT {
     }
 
     @Test
-    void installsArchiveFromRemote() throws Exception {
+    void installsPackageFromRemote() throws Exception {
         new ComposerSimple(this.url, "psr/log", "1.1.3")
             .writeTo(this.tmp.resolve("composer.json"));
         new TestResource("packages-remote.json")
