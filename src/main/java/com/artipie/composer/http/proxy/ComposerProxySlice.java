@@ -21,9 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artipie.composer.http;
+package com.artipie.composer.http.proxy;
 
 import com.artipie.asto.cache.Cache;
+import com.artipie.composer.Repository;
+import com.artipie.composer.http.PackageMetadataSlice;
 import com.artipie.http.Slice;
 import com.artipie.http.client.ClientSlices;
 import com.artipie.http.client.UriClientSlice;
@@ -43,48 +45,63 @@ import java.net.URI;
  * Composer proxy repository slice.
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
+ * @checkstyle ParameterNumberCheck (500 lines)
  */
 public class ComposerProxySlice extends Slice.Wrap {
     /**
      * New Composer proxy without cache and without authentication.
      * @param clients HTTP clients
      * @param remote Remote URI
+     * @param repo Repository
      */
-    public ComposerProxySlice(final ClientSlices clients, final URI remote) {
-        this(clients, remote, Authenticator.ANONYMOUS, Cache.NOP);
+    public ComposerProxySlice(final ClientSlices clients, final URI remote, final Repository repo) {
+        this(clients, remote, repo, Authenticator.ANONYMOUS, Cache.NOP);
     }
 
     /**
      * New Composer proxy without cache.
      * @param clients HTTP clients
      * @param remote Remote URI
+     * @param repo Repository
      * @param auth Authenticator
      */
     public ComposerProxySlice(
-        final ClientSlices clients, final URI remote, final Authenticator auth
+        final ClientSlices clients, final URI remote,
+        final Repository repo, final Authenticator auth
     ) {
-        this(clients, remote, auth, Cache.NOP);
+        this(clients, remote, repo, auth, Cache.NOP);
     }
 
     /**
      * New Composer proxy slice with cache.
      * @param clients HTTP clients
      * @param remote Remote URI
+     * @param repository Repository
      * @param auth Authenticator
      * @param cache Repository cache
-     * @checkstyle ParameterNumberCheck (6 lines)
      */
     public ComposerProxySlice(
         final ClientSlices clients,
         final URI remote,
+        final Repository repository,
         final Authenticator auth,
         final Cache cache
     ) {
         super(
             new SliceRoute(
                 new RtRulePath(
-                    new ByMethodsRule(RqMethod.GET),
-                    new CachedProxySlice(remote(clients, remote, auth), cache)
+                    new RtRule.All(
+                        new RtRule.ByPath(PackageMetadataSlice.ALL_PACKAGES),
+                        new ByMethodsRule(RqMethod.GET)
+                    ),
+                    new EmptyAllPackagesSlice()
+                ),
+                new RtRulePath(
+                    new RtRule.All(
+                        new RtRule.ByPath(PackageMetadataSlice.PACKAGE),
+                        new ByMethodsRule(RqMethod.GET)
+                    ),
+                    new CachedProxySlice(remote(clients, remote, auth), repository, cache)
                 ),
                 new RtRulePath(
                     RtRule.FALLBACK,
