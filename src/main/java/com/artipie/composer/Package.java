@@ -42,8 +42,8 @@ public interface Package {
     CompletionStage<Name> name();
 
     /**
-     * Extract version from package. Returns default value if present in case of
-     * absence version.
+     * Extract version from package. Returns passed as a parameter value if present
+     * in case of absence version.
      *
      * @param value Value in case of absence of version. This value can be empty.
      * @return Package version.
