@@ -45,10 +45,10 @@ public interface Package {
      * Extract version from package. Returns default value if present in case of
      * absence version.
      *
-     * @param defaultval Default value in case of absence of version
+     * @param value Value in case of absence of version. This value can be empty.
      * @return Package version.
      */
-    CompletionStage<Optional<String>> version(Optional<String> defaultval);
+    CompletionStage<Optional<String>> version(Optional<String> value);
 
     /**
      * Reads package content as JSON object.

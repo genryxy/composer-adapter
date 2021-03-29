@@ -40,10 +40,11 @@ public interface Packages {
      * Add package.
      *
      * @param pack Package.
-     * @param defversion Default version in case of absence.
+     * @param version Version in case of absence version in package. If package does not
+     *  contain version, this value should be passed as a parameter.
      * @return Updated packages.
      */
-    CompletionStage<Packages> add(Package pack, Optional<String> defversion);
+    CompletionStage<Packages> add(Package pack, Optional<String> version);
 
     /**
      * Saves packages registry binary content to storage.

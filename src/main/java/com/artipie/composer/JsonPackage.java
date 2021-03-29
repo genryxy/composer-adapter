@@ -59,10 +59,10 @@ public final class JsonPackage implements Package {
     }
 
     @Override
-    public CompletionStage<Optional<String>> version(final Optional<String> defval) {
-        final String defaultvers = defval.orElse(null);
+    public CompletionStage<Optional<String>> version(final Optional<String> value) {
+        final String version = value.orElse(null);
         return this.optString("version")
-            .thenApply(opt -> opt.orElse(defaultvers))
+            .thenApply(opt -> opt.orElse(version))
             .thenApply(Optional::ofNullable);
     }
 

@@ -157,9 +157,9 @@ class AstoRepositoryAddJsonTest {
         return saved.getJsonObject("packages");
     }
 
-    private void addJsonToAsto(final Content json, final Optional<String> defvers) {
+    private void addJsonToAsto(final Content json, final Optional<String> vers) {
         new AstoRepository(this.storage)
-            .addJson(json, defvers)
+            .addJson(json, vers)
             .join();
     }
 
