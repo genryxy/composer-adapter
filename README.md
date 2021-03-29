@@ -98,7 +98,7 @@ after calling the command `composer install` automatically according to `compose
 By calling the command `composer update` `composer.lock` will be automatically updated according 
 to existing `composer.json`.
 
-## Structure of `composer.json`
+## Content of `composer.json`
 There are required packages in this file with specified version. For example, [this file](https://getcomposer.org/doc/01-basic-usage.md#the-require-key).
 Also, in this file the type of repository could be defined. There are several types of [repositories](https://getcomposer.org/doc/05-repositories.md#repositories),
 but it is necessary to pay attention to [composer](https://getcomposer.org/doc/05-repositories.md#composer) and [artifact](https://getcomposer.org/doc/05-repositories.md#artifact)
