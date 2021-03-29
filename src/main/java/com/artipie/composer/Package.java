@@ -24,6 +24,7 @@
 
 package com.artipie.composer;
 
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import javax.json.JsonObject;
 
@@ -41,11 +42,13 @@ public interface Package {
     CompletionStage<Name> name();
 
     /**
-     * Extract version from package.
+     * Extract version from package. Returns default value if present in case of
+     * absence version.
      *
+     * @param defaultval Default value in case of absence of version
      * @return Package version.
      */
-    CompletionStage<String> version();
+    CompletionStage<Optional<String>> version(Optional<String> defaultval);
 
     /**
      * Reads package content as JSON object.

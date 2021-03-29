@@ -91,7 +91,7 @@ public final class AstoRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Void> addJson(final Content content) {
+    public CompletableFuture<Void> addJson(final Content content, final Optional<String> defvers) {
         final Key key = new Key.From(UUID.randomUUID().toString());
         return this.storage.save(key, content).thenCompose(
             nothing -> this.storage.value(key)
@@ -103,7 +103,7 @@ public final class AstoRepository implements Repository {
                         return CompletableFuture.allOf(
                             this.packages().thenCompose(
                                 packages -> packages.orElse(new JsonPackages())
-                                    .add(pack)
+                                    .add(pack, defvers)
                                     .thenCompose(
                                         pkgs -> pkgs.save(
                                             this.storage, AstoRepository.ALL_PACKAGES
@@ -113,7 +113,7 @@ public final class AstoRepository implements Repository {
                             pack.name().thenCompose(
                                 name -> this.packages(name).thenCompose(
                                     packages -> packages.orElse(new JsonPackages())
-                                        .add(pack)
+                                        .add(pack, defvers)
                                         .thenCompose(
                                             pkgs -> pkgs.save(this.storage, name.key())
                                         )
@@ -154,7 +154,8 @@ public final class AstoRepository implements Repository {
                                         .add(
                                             new JsonPackage(
                                                 new Content.From(this.addDist(compos, key))
-                                            )
+                                            ),
+                                            Optional.empty()
                                         )
                                         .thenCompose(
                                             pkgs -> pkgs.save(

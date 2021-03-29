@@ -31,6 +31,7 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import com.artipie.composer.misc.ContentAsJson;
+import java.util.Optional;
 import javax.json.JsonObject;
 import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
@@ -102,8 +103,9 @@ class JsonPackagesTest {
         final JsonObject json = this.addPackageTo("{\"packages\":{}}");
         MatcherAssert.assertThat(
             this.versions(json).getJsonObject(
-                this.pack.version()
+                this.pack.version(Optional.empty())
                     .toCompletableFuture().join()
+                    .get()
             ),
             new IsNot<>(new IsNull<>())
         );
@@ -118,7 +120,10 @@ class JsonPackagesTest {
         MatcherAssert.assertThat(
             versions.keySet(),
             new IsEqual<>(
-                new SetOf<>("1.1.0", this.pack.version().toCompletableFuture().join())
+                new SetOf<>(
+                    "1.1.0",
+                    this.pack.version(Optional.empty()).toCompletableFuture().join().get()
+                )
             )
         );
     }
@@ -126,7 +131,7 @@ class JsonPackagesTest {
     private JsonObject addPackageTo(final String original) {
         final Key key = this.name.key();
         new JsonPackages(new Content.From(original.getBytes()))
-            .add(this.pack)
+            .add(this.pack, Optional.empty())
             .toCompletableFuture().join()
             .save(this.storage, key)
             .toCompletableFuture().join();

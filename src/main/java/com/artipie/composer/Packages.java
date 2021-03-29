@@ -27,6 +27,7 @@ package com.artipie.composer;
 import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -39,9 +40,10 @@ public interface Packages {
      * Add package.
      *
      * @param pack Package.
+     * @param defversion Default version in case of absence.
      * @return Updated packages.
      */
-    CompletionStage<Packages> add(Package pack);
+    CompletionStage<Packages> add(Package pack, Optional<String> defversion);
 
     /**
      * Saves packages registry binary content to storage.

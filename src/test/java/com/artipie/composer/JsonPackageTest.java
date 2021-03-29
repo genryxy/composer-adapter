@@ -26,6 +26,7 @@ package com.artipie.composer;
 
 import com.artipie.asto.Content;
 import com.artipie.asto.test.TestResource;
+import java.util.Optional;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +66,9 @@ class JsonPackageTest {
     @Test
     void shouldExtractVersion() {
         MatcherAssert.assertThat(
-            this.pack.version().toCompletableFuture().join(),
+            this.pack.version(Optional.empty())
+                .toCompletableFuture().join()
+                .get(),
             new IsEqual<>("1.2.0")
         );
     }

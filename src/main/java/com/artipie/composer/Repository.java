@@ -57,9 +57,10 @@ public interface Repository {
      * Adds package described in JSON format from storage.
      *
      * @param content Package content.
+     * @param defversion Default version in case of absence.
      * @return Completion of adding package to repository.
      */
-    CompletableFuture<Void> addJson(Content content);
+    CompletableFuture<Void> addJson(Content content, Optional<String> defversion);
 
     /**
      * Adds package described in archive with ZIP or TAR.GZ

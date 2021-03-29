@@ -26,6 +26,7 @@ package com.artipie.composer;
 
 import com.artipie.asto.Content;
 import com.artipie.composer.misc.ContentAsJson;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import javax.json.JsonObject;
@@ -58,8 +59,11 @@ public final class JsonPackage implements Package {
     }
 
     @Override
-    public CompletionStage<String> version() {
-        return this.mandatoryString("version");
+    public CompletionStage<Optional<String>> version(final Optional<String> defval) {
+        final String defaultvers = defval.orElse(null);
+        return this.optString("version")
+            .thenApply(opt -> opt.orElse(defaultvers))
+            .thenApply(Optional::ofNullable);
     }
 
     @Override
@@ -94,5 +98,16 @@ public final class JsonPackage implements Package {
                     return res;
                 }
             );
+    }
+
+    /**
+     * Reads string value from package JSON root. Empty in case of absence.
+     * @param name Attribute value
+     * @return String value, otherwise empty.
+     */
+    private CompletionStage<Optional<String>> optString(final String name) {
+        return this.json()
+            .thenApply(json -> json.getString(name, null))
+            .thenApply(Optional::ofNullable);
     }
 }
