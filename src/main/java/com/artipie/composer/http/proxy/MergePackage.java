@@ -81,32 +81,12 @@ public interface MergePackage {
         public CompletionStage<Optional<Content>> merge(
             final Optional<? extends Content> remote
         ) {
-            return WithRemote.packageFrom(this.local)
+            return WithRemote.packagesFrom(this.local)
                 .thenApply(this::packageByNameFrom)
                 .thenCombine(
-                    WithRemote.packageFromOpt(remote),
+                    WithRemote.packagesFromOpt(remote),
                     (lcl, rmt) -> {
-                        final JsonObjectBuilder bldr = Json.createObjectBuilder(lcl);
-                        final Set<String> vrsns = lcl.keySet();
-                        rmt.ifPresent(
-                            json -> json.getJsonArray(this.name).stream()
-                                .map(JsonValue::asJsonObject)
-                                .forEach(
-                                    entry -> {
-                                        final String vers = entry.getString(JsonPackage.VRSN);
-                                        if (!vrsns.contains(vers)) {
-                                            final JsonObjectBuilder rmtblbdr;
-                                            rmtblbdr = Json.createObjectBuilder(entry);
-                                            if (!entry.containsKey("name")) {
-                                                rmtblbdr.add("name", this.name);
-                                            }
-                                            rmtblbdr.add("uid", UUID.randomUUID().toString());
-                                            bldr.add(vers, rmtblbdr.build());
-                                        }
-                                    }
-                                )
-                        );
-                        final JsonObject builded = bldr.build();
+                        final JsonObject builded = this.jsonWithMergedContent(lcl, rmt);
                         final Optional<Content> res;
                         if (builded.keySet().isEmpty()) {
                             res = Optional.empty();
@@ -133,9 +113,10 @@ public interface MergePackage {
          * @param pkgs Content of `package.json` file
          * @return Packages entry from file.
          */
-        private static CompletionStage<JsonObject> packageFrom(final Content pkgs) {
+        private static CompletionStage<Optional<JsonObject>> packagesFrom(final Content pkgs) {
             return new ContentAsJson(pkgs).value()
-                .thenApply(json -> json.getJsonObject("packages"));
+                .thenApply(json -> json.getJsonObject("packages"))
+                .thenApply(Optional::ofNullable);
         }
 
         /**
@@ -143,13 +124,12 @@ public interface MergePackage {
          * @param pkgs Optional content of `package.json` file
          * @return Packages entry from file if content is presented, otherwise empty..
          */
-        private static CompletionStage<Optional<JsonObject>> packageFromOpt(
+        private static CompletionStage<Optional<JsonObject>> packagesFromOpt(
             final Optional<? extends Content> pkgs
         ) {
             final CompletionStage<Optional<JsonObject>> res;
             if (pkgs.isPresent()) {
-                res = WithRemote.packageFrom(pkgs.get())
-                    .thenApply(Optional::of);
+                res = WithRemote.packagesFrom(pkgs.get());
             } else {
                 res = CompletableFuture.completedFuture(Optional.empty());
             }
@@ -162,14 +142,54 @@ public interface MergePackage {
          * @return Info about one package. If passed json does not
          *  contain package, empty json will be returned.
          */
-        private JsonObject packageByNameFrom(final JsonObject json) {
+        private JsonObject packageByNameFrom(final Optional<JsonObject> json) {
             final JsonObject res;
-            if (json.containsKey(this.name)) {
-                res = json.getJsonObject(this.name);
+            if (json.isPresent() && json.get().containsKey(this.name)) {
+                res = json.get().getJsonObject(this.name);
             } else {
                 res = Json.createObjectBuilder().build();
             }
             return res;
+        }
+
+        /**
+         * Merges info about package from local index with info from remote one.
+         * @param lcl Local index file
+         * @param rmt Remote index file
+         * @return Merged JSON.
+         * @checkstyle NestedIfDepthCheck (40 lines)
+         */
+        private JsonObject jsonWithMergedContent(
+            final JsonObject lcl, final Optional<JsonObject> rmt
+        ) {
+            final Set<String> vrsns = lcl.keySet();
+            final JsonObjectBuilder bldr = Json.createObjectBuilder();
+            vrsns.forEach(
+                vers -> bldr.add(
+                    vers, Json.createObjectBuilder(lcl.getJsonObject(vers))
+                        .add("uid", UUID.randomUUID().toString())
+                        .build()
+                )
+            );
+            if (rmt.isPresent() && rmt.get().containsKey(this.name)) {
+                rmt.get().getJsonArray(this.name).stream()
+                    .map(JsonValue::asJsonObject)
+                    .forEach(
+                        entry -> {
+                            final String vers = entry.getString(JsonPackage.VRSN);
+                            if (!vrsns.contains(vers)) {
+                                final JsonObjectBuilder rmtblbdr;
+                                rmtblbdr = Json.createObjectBuilder(entry);
+                                if (!entry.containsKey("name")) {
+                                    rmtblbdr.add("name", this.name);
+                                }
+                                rmtblbdr.add("uid", UUID.randomUUID().toString());
+                                bldr.add(vers, rmtblbdr.build());
+                            }
+                        }
+                );
+            }
+            return bldr.build();
         }
     }
 }
