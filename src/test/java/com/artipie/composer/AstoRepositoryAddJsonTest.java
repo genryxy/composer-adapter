@@ -175,7 +175,7 @@ class AstoRepositoryAddJsonTest {
     }
 
     @Test
-    void shouldFailToAddPackageWithoutVersionWithEmptyPassed() {
+    void shouldFailToAddPackageWithoutVersion() {
         final CompletionException result = Assertions.assertThrows(
             CompletionException.class,
             () -> this.addJsonToAsto(
