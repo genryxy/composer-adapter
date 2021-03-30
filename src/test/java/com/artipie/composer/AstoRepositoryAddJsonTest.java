@@ -160,11 +160,17 @@ class AstoRepositoryAddJsonTest {
             vers
         );
         final Name name = new Name("vendor/package");
+        final JsonObject pkgs = this.packages(name.key())
+            .getJsonObject(name.string());
         MatcherAssert.assertThat(
-            this.packages(name.key())
-                .getJsonObject(name.string())
-                .keySet(),
+            "Packages contains package with added version",
+            pkgs.keySet(),
             new IsEqual<>(new SetOf<>(vers.get()))
+        );
+        MatcherAssert.assertThat(
+            "Added package contains `version` entry",
+            pkgs.getJsonObject(vers.get()).getString("version"),
+            new IsEqual<>(vers.get())
         );
     }
 
