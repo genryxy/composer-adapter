@@ -97,12 +97,20 @@ public final class JsonPackages implements Packages {
                                 }
                                 return pack.version(vers).thenCombine(
                                     pack.json(),
-                                    (vrsn, content) -> {
+                                    (vrsn, pkg) -> {
                                         if (!vrsn.isPresent()) {
                                             // @checkstyle LineLengthCheck (1 line)
                                             throw new IllegalStateException(String.format("Failed to add package `%s` to packages.json because version is absent", pname));
                                         }
-                                        return builder.add(vrsn.get(), content);
+                                        final JsonObject foradd;
+                                        if (pkg.containsKey(JsonPackage.VRSN)) {
+                                            foradd = pkg;
+                                        } else {
+                                            foradd = Json.createObjectBuilder(pkg)
+                                                .add(JsonPackage.VRSN, vrsn.get())
+                                                .build();
+                                        }
+                                        return builder.add(vrsn.get(), foradd);
                                     }
                                 ).thenApply(
                                     bldr -> new JsonPackages(

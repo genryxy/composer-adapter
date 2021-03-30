@@ -70,7 +70,7 @@ final class AddSlice implements Slice {
         final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body
     ) {
-        final String path = new RequestLineFrom(line).uri().getPath();
+        final String path = new RequestLineFrom(line).uri().toString();
         final Matcher matcher = AddSlice.PATH_PATTERN.matcher(path);
         final Response resp;
         if (matcher.matches()) {

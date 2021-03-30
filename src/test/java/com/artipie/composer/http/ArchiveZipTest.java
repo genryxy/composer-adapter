@@ -25,11 +25,9 @@ package com.artipie.composer.http;
 
 import com.artipie.asto.Content;
 import com.artipie.asto.test.TestResource;
-import java.io.ByteArrayOutputStream;
+import com.artipie.composer.test.EmptyZip;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletionException;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.Assertions;
@@ -96,20 +94,12 @@ final class ArchiveZipTest {
             CompletionException.class,
             () -> new Archive.Zip(
                 new Archive.Name("some name", "1.0.2")
-            ).composerFrom(new Content.From(ArchiveZipTest.emptyZip()))
+            ).composerFrom(new Content.From(new EmptyZip().value()))
             .toCompletableFuture().join()
         );
         MatcherAssert.assertThat(
             exc.getCause().getMessage(),
             new IsEqual<>("'composer.json' file was not found")
         );
-    }
-
-    private static byte[] emptyZip() throws Exception {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zos = new ZipOutputStream(bos);
-        zos.putNextEntry(new ZipEntry("whatever"));
-        zos.close();
-        return bos.toByteArray();
     }
 }

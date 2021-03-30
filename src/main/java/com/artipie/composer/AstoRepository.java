@@ -181,7 +181,7 @@ public final class AstoRepository implements Repository {
      */
     private static JsonObject addVersion(final JsonObject compos, final Archive.Name name) {
         return Json.createObjectBuilder(compos)
-            .add("version", name.version())
+            .add(JsonPackage.VRSN, name.version())
             .build();
     }
 

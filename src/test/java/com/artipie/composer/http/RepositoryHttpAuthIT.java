@@ -29,6 +29,7 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.AstoRepository;
 import com.artipie.composer.test.ComposerSimple;
+import com.artipie.composer.test.EmptyZip;
 import com.artipie.composer.test.HttpUrlUpload;
 import com.artipie.composer.test.PackageSimple;
 import com.artipie.composer.test.TestAuthentication;
@@ -41,14 +42,11 @@ import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -191,9 +189,8 @@ final class RepositoryHttpAuthIT {
         new HttpUrlUpload(
             String.format("http://localhost:%s", this.port),
             new PackageSimple(
-                this.upload(RepositoryHttpAuthIT.emptyZip(), this.sourceport)
-            ).value()
-            .getBytes()
+                this.upload(new EmptyZip().value(), this.sourceport)
+            ).withSetVersion()
         ).upload(Optional.of(TestAuthentication.ALICE));
     }
 
@@ -225,13 +222,5 @@ final class RepositoryHttpAuthIT {
             user.password(),
             this.port
         );
-    }
-
-    private static byte[] emptyZip() throws Exception {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zos = new ZipOutputStream(bos);
-        zos.putNextEntry(new ZipEntry("whatever"));
-        zos.close();
-        return bos.toByteArray();
     }
 }
