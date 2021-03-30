@@ -32,6 +32,7 @@ import com.artipie.asto.test.TestResource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -41,6 +42,8 @@ import org.cactoos.set.SetOf;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.hamcrest.core.IsEqual;
+import org.hamcrest.core.IsInstanceOf;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +53,7 @@ import org.junit.jupiter.api.Test;
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
 class AstoRepositoryAddJsonTest {
 
     /**
@@ -86,7 +90,9 @@ class AstoRepositoryAddJsonTest {
         final Name name = this.pack.name()
             .toCompletableFuture().join();
         MatcherAssert.assertThat(
-            this.packages().getJsonObject(name.string()).keySet(),
+            this.packages(new AllPackages())
+                .getJsonObject(name.string())
+                .keySet(),
             new IsEqual<>(new SetOf<>(this.version))
         );
     }
@@ -99,7 +105,9 @@ class AstoRepositoryAddJsonTest {
         );
         this.addJsonToAsto(this.packageJson(), Optional.empty());
         MatcherAssert.assertThat(
-            this.packages().getJsonObject("vendor/package").keySet(),
+            this.packages(new AllPackages())
+                .getJsonObject("vendor/package")
+                .keySet(),
             new IsEqual<>(new SetOf<>("2.0", this.version))
         );
     }
@@ -144,8 +152,35 @@ class AstoRepositoryAddJsonTest {
         );
     }
 
-    private JsonObject packages() {
-        return this.packages(new AllPackages());
+    @Test
+    void shouldAddPackageWithoutVersionWithPassedValue() {
+        final Optional<String> vers = Optional.of("2.3.4");
+        this.addJsonToAsto(
+            new Content.From(new TestResource("package-without-version.json").asBytes()),
+            vers
+        );
+        final Name name = new Name("vendor/package");
+        MatcherAssert.assertThat(
+            this.packages(name.key())
+                .getJsonObject(name.string())
+                .keySet(),
+            new IsEqual<>(new SetOf<>(vers.get()))
+        );
+    }
+
+    @Test
+    void shouldFailToAddPackageWithoutVersionWithEmptyPassed() {
+        final CompletionException result = Assertions.assertThrows(
+            CompletionException.class,
+            () -> this.addJsonToAsto(
+                new Content.From(new TestResource("package-without-version.json").asBytes()),
+                Optional.empty()
+            )
+        );
+        MatcherAssert.assertThat(
+            result.getCause(),
+            new IsInstanceOf(IllegalStateException.class)
+        );
     }
 
     private JsonObject packages(final Key key) {

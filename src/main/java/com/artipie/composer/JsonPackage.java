@@ -37,6 +37,10 @@ import javax.json.JsonObject;
  * @since 0.1
  */
 public final class JsonPackage implements Package {
+    /**
+     * Key for version in JSON.
+     */
+    public static final String VRSN = "version";
 
     /**
      * Package binary content.
@@ -61,7 +65,7 @@ public final class JsonPackage implements Package {
     @Override
     public CompletionStage<Optional<String>> version(final Optional<String> value) {
         final String version = value.orElse(null);
-        return this.optString("version")
+        return this.optString(JsonPackage.VRSN)
             .thenApply(opt -> opt.orElse(version))
             .thenApply(Optional::ofNullable);
     }

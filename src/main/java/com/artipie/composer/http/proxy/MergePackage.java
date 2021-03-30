@@ -24,6 +24,7 @@
 package com.artipie.composer.http.proxy;
 
 import com.artipie.asto.Content;
+import com.artipie.composer.JsonPackage;
 import com.artipie.composer.misc.ContentAsJson;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -92,7 +93,7 @@ public interface MergePackage {
                                 .map(JsonValue::asJsonObject)
                                 .forEach(
                                     entry -> {
-                                        final String vers = entry.getString("version");
+                                        final String vers = entry.getString(JsonPackage.VRSN);
                                         if (!vrsns.contains(vers)) {
                                             final JsonObjectBuilder rmtblbdr;
                                             rmtblbdr = Json.createObjectBuilder(entry);

@@ -29,23 +29,20 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.AstoRepository;
 import com.artipie.composer.test.ComposerSimple;
+import com.artipie.composer.test.EmptyZip;
 import com.artipie.composer.test.HttpUrlUpload;
 import com.artipie.composer.test.PackageSimple;
-import com.artipie.composer.test.TestAuthentication;
 import com.artipie.files.FilesSlice;
 import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -75,6 +72,7 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class RepositoryHttpIT {
     /**
      * Temporary directory.
@@ -159,7 +157,7 @@ class RepositoryHttpIT {
     }
 
     @Test
-    void shouldInstallAddedPackage() throws Exception {
+    void shouldInstallAddedPackageWithVersion() throws Exception {
         this.addPackage();
         new ComposerSimple(this.url).writeTo(this.project.resolve("composer.json"));
         MatcherAssert.assertThat(
@@ -177,14 +175,38 @@ class RepositoryHttpIT {
         );
     }
 
+    @Test
+    void shouldInstallAddedPackageWithoutVersion() throws Exception {
+        new HttpUrlUpload(
+            String.format("http://localhost:%s/?version=2.3.4", this.port),
+            new PackageSimple(
+                this.upload(new EmptyZip().value(), this.sourceport)
+            ).withoutVersion()
+        ).upload(Optional.empty());
+        new ComposerSimple(this.url, "vendor/package", "2.3.4")
+            .writeTo(this.project.resolve("composer.json"));
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new AllOf<>(
+                new ListOf<Matcher<? super String>>(
+                    new StringContains(false, "Installs: vendor/package:2.3.4"),
+                    new StringContains(false, "- Downloading vendor/package (2.3.4)"),
+                    new StringContains(
+                        false,
+                        "- Installing vendor/package (2.3.4): Extracting archive"
+                    )
+                )
+            )
+        );
+    }
+
     private void addPackage() throws Exception {
         new HttpUrlUpload(
             String.format("http://localhost:%s", this.port),
             new PackageSimple(
-                this.upload(RepositoryHttpIT.emptyZip(), this.sourceport)
-            ).value()
-            .getBytes()
-        ).upload(Optional.of(TestAuthentication.ALICE));
+                this.upload(new EmptyZip().value(), this.sourceport)
+            ).withSetVersion()
+        ).upload(Optional.empty());
     }
 
     private String upload(final byte[] content, final int freeport) {
@@ -206,13 +228,5 @@ class RepositoryHttpIT {
         );
         Logger.debug(this, log);
         return log;
-    }
-
-    private static byte[] emptyZip() throws Exception {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zos = new ZipOutputStream(bos);
-        zos.putNextEntry(new ZipEntry("whatever"));
-        zos.close();
-        return bos.toByteArray();
     }
 }
