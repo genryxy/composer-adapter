@@ -31,6 +31,7 @@ import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.asto.test.TestResource;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -44,7 +45,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link AstoRepository#addJson(Content)}.
+ * Tests for {@link AstoRepository#addJson(Content, Optional)}.
  *
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (2 lines)
@@ -74,12 +75,14 @@ class AstoRepositoryAddJsonTest {
                 new TestResource("minimal-package.json").asBytes()
             )
         );
-        this.version = this.pack.version().toCompletableFuture().join();
+        this.version = this.pack.version(Optional.empty())
+            .toCompletableFuture().join()
+            .get();
     }
 
     @Test
     void shouldAddPackageToAll() throws Exception {
-        new AstoRepository(this.storage).addJson(this.packageJson()).get();
+        this.addJsonToAsto(this.packageJson(), Optional.empty());
         final Name name = this.pack.name()
             .toCompletableFuture().join();
         MatcherAssert.assertThat(
@@ -94,7 +97,7 @@ class AstoRepositoryAddJsonTest {
             new AllPackages(),
             "{\"packages\":{\"vendor/package\":{\"2.0\":{}}}}".getBytes()
         );
-        new AstoRepository(this.storage).addJson(this.packageJson()).get();
+        this.addJsonToAsto(this.packageJson(), Optional.empty());
         MatcherAssert.assertThat(
             this.packages().getJsonObject("vendor/package").keySet(),
             new IsEqual<>(new SetOf<>("2.0", this.version))
@@ -103,12 +106,12 @@ class AstoRepositoryAddJsonTest {
 
     @Test
     void shouldAddPackage() throws Exception {
-        new AstoRepository(this.storage).addJson(this.packageJson()).get();
+        this.addJsonToAsto(this.packageJson(), Optional.empty());
         final Name name = this.pack.name()
             .toCompletableFuture().join();
         MatcherAssert.assertThat(
             "Package with correct version should present in packages after being added",
-            this.packages(name).getJsonObject(name.string()).keySet(),
+            this.packages(name.key()).getJsonObject(name.string()).keySet(),
             new IsEqual<>(new SetOf<>(this.version))
         );
     }
@@ -121,18 +124,18 @@ class AstoRepositoryAddJsonTest {
             name.key(),
             "{\"packages\":{\"vendor/package\":{\"1.1.0\":{}}}}".getBytes()
         );
-        new AstoRepository(this.storage).addJson(this.packageJson()).get();
+        this.addJsonToAsto(this.packageJson(), Optional.empty());
         MatcherAssert.assertThat(
             // @checkstyle LineLengthCheck (1 line)
             "Package with both new and old versions should present in packages after adding new version",
-            this.packages(name).getJsonObject(name.string()).keySet(),
+            this.packages(name.key()).getJsonObject(name.string()).keySet(),
             new IsEqual<>(new SetOf<>("1.1.0", this.version))
         );
     }
 
     @Test
     void shouldDeleteSourceAfterAdding() throws Exception {
-        new AstoRepository(this.storage).addJson(this.packageJson()).get();
+        this.addJsonToAsto(this.packageJson(), Optional.empty());
         MatcherAssert.assertThat(
             this.storage.list(Key.ROOT).join().stream()
                 .map(Key::string)
@@ -145,10 +148,6 @@ class AstoRepositoryAddJsonTest {
         return this.packages(new AllPackages());
     }
 
-    private JsonObject packages(final Name name) {
-        return this.packages(name.key());
-    }
-
     private JsonObject packages(final Key key) {
         final JsonObject saved;
         final byte[] bytes = new BlockingStorage(this.storage).value(key);
@@ -158,14 +157,20 @@ class AstoRepositoryAddJsonTest {
         return saved.getJsonObject("packages");
     }
 
+    private void addJsonToAsto(final Content json, final Optional<String> vers) {
+        new AstoRepository(this.storage)
+            .addJson(json, vers)
+            .join();
+    }
+
     private Content packageJson() throws Exception {
         final byte[] bytes;
-        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-            JsonWriter writer = Json.createWriter(out)) {
-            writer.writeObject(this.pack.json().toCompletableFuture().join());
-            out.flush();
-            bytes = out.toByteArray();
-        }
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final JsonWriter writer = Json.createWriter(out);
+        writer.writeObject(this.pack.json().toCompletableFuture().join());
+        out.flush();
+        bytes = out.toByteArray();
+        writer.close();
         return new Content.From(bytes);
     }
 }
