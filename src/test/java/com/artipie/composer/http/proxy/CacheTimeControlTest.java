@@ -35,6 +35,8 @@ import java.time.ZonedDateTime;
 import javax.json.Json;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -43,12 +45,21 @@ import org.junit.jupiter.params.provider.CsvSource;
  * @since 0.4
  */
 final class CacheTimeControlTest {
+    /**
+     * Storage.
+     */
+    private Storage storage;
+
+    @BeforeEach
+    void setUp() {
+        this.storage = new InMemoryStorage();
+    }
+
     @ParameterizedTest
     @CsvSource({"1,true", "12,false"})
     void verifiesTimeValueCorrectly(final long minutes, final boolean valid) {
-        final Storage storage = new InMemoryStorage();
         final String pkg = "vendor/package";
-        new BlockingStorage(storage).save(
+        new BlockingStorage(this.storage).save(
             CacheTimeControl.CACHE_FILE,
             Json.createObjectBuilder()
                 .add(
@@ -60,10 +71,26 @@ final class CacheTimeControlTest {
                 ).build().toString().getBytes()
         );
         MatcherAssert.assertThat(
-            new CacheTimeControl(new AstoRepository(storage))
-                .validate(new Key.From(pkg), Remote.EMPTY)
-                .toCompletableFuture().join(),
+            this.validate(pkg),
             new IsEqual<>(valid)
         );
+    }
+
+    @Test
+    void falseForAbsentPackage() {
+        new BlockingStorage(this.storage).save(
+            CacheTimeControl.CACHE_FILE,
+            Json.createObjectBuilder().build().toString().getBytes()
+        );
+        MatcherAssert.assertThat(
+            this.validate("not/exist"),
+            new IsEqual<>(false)
+        );
+    }
+
+    private boolean validate(final String pkg) {
+        return new CacheTimeControl(new AstoRepository(this.storage))
+            .validate(new Key.From(pkg), Remote.EMPTY)
+            .toCompletableFuture().join();
     }
 }
