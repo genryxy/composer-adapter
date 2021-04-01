@@ -38,11 +38,26 @@ public class PackageSimple {
     private final String url;
 
     /**
+     * Package name.
+     */
+    private final String name;
+
+    /**
      * Ctor.
      * @param url Repository url
      */
     public PackageSimple(final String url) {
+        this(url, "vendor/package");
+    }
+
+    /**
+     * Ctor.
+     * @param url Repository url
+     * @param name Package name
+     */
+    public PackageSimple(final String url, final String name) {
         this.url = url;
+        this.name = name;
     }
 
     /**
@@ -51,7 +66,7 @@ public class PackageSimple {
      */
     public byte[] withSetVersion() {
         return Json.createObjectBuilder()
-            .add("name", "vendor/package")
+            .add("name", this.name)
             .add("version", "1.1.2")
             .add(
                 "dist",
@@ -69,7 +84,7 @@ public class PackageSimple {
      */
     public byte[] withoutVersion() {
         return Json.createObjectBuilder()
-            .add("name", "vendor/package")
+            .add("name", this.name)
             .add(
                 "dist",
                 Json.createObjectBuilder()

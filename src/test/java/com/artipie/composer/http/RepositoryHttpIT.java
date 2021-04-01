@@ -43,6 +43,7 @@ import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,14 +71,14 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class RepositoryHttpIT {
     /**
+     * Vertx instance for using in test.
+     */
+    private static final Vertx VERTX = Vertx.vertx();
+
+    /**
      * Temporary directory.
      */
     private Path temp;
-
-    /**
-     * Vert.x instance to use in tests.
-     */
-    private Vertx vertx;
 
     /**
      * Path to PHP project directory.
@@ -112,16 +113,15 @@ class RepositoryHttpIT {
     @BeforeEach
     void setUp() throws IOException {
         this.temp = Files.createTempDirectory("");
-        this.vertx = Vertx.vertx();
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.server = new VertxSliceServer(
-            this.vertx,
+            RepositoryHttpIT.VERTX,
             new LoggingSlice(new PhpComposer(new AstoRepository(new InMemoryStorage())))
         );
         this.port = this.server.start();
         final int sourceport = new RandomFreePort().get();
-        this.sourceserver = new SourceServer(this.vertx, sourceport);
+        this.sourceserver = new SourceServer(RepositoryHttpIT.VERTX, sourceport);
         Testcontainers.exposeHostPorts(this.port, sourceport);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
@@ -138,13 +138,17 @@ class RepositoryHttpIT {
             this.sourceserver.close();
         }
         this.server.stop();
-        this.vertx.close();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.temp.toFile());
         } catch (final IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    @AfterAll
+    static void close() {
+        RepositoryHttpIT.VERTX.close();
     }
 
     @Test
