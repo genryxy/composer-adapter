@@ -42,6 +42,7 @@ import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,14 +64,14 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 final class HttpZipArchiveIT {
     /**
+     * Vertx instance for using in test.
+     */
+    private static final Vertx VERTX = Vertx.vertx();
+
+    /**
      * Temporary directory.
      */
     private Path tmp;
-
-    /**
-     * Vert.x instance to use in tests.
-     */
-    private Vertx vertx;
 
     /**
      * HTTP server hosting repository.
@@ -95,14 +96,13 @@ final class HttpZipArchiveIT {
     @BeforeEach
     void setUp() throws IOException {
         this.tmp = Files.createTempDirectory("");
-        this.vertx = Vertx.vertx();
         this.port = new RandomFreePort().get();
         this.url = String.format("http://host.testcontainers.internal:%s", this.port);
         final AstoRepository asto = new AstoRepository(
             new FileStorage(this.tmp), Optional.of(this.url)
         );
         this.server = new VertxSliceServer(
-            this.vertx,
+            HttpZipArchiveIT.VERTX,
             new LoggingSlice(new PhpComposer(asto)),
             this.port
         );
@@ -119,13 +119,17 @@ final class HttpZipArchiveIT {
     @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         this.server.stop();
-        this.vertx.close();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.tmp.toFile());
         } catch (final IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    @AfterAll
+    static void close() {
+        HttpZipArchiveIT.VERTX.close();
     }
 
     @Test

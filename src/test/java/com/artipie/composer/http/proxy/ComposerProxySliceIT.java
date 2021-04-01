@@ -25,13 +25,18 @@ package com.artipie.composer.http.proxy;
 
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
+import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.cache.Cache;
 import com.artipie.asto.fs.FileStorage;
 import com.artipie.asto.test.TestResource;
+import com.artipie.composer.AllPackages;
 import com.artipie.composer.AstoRepository;
 import com.artipie.composer.test.ComposerSimple;
+import com.artipie.composer.test.PackageSimple;
+import com.artipie.composer.test.SourceServer;
 import com.artipie.http.client.auth.Authenticator;
 import com.artipie.http.client.jetty.JettyClientSlices;
+import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
@@ -99,6 +104,16 @@ final class ComposerProxySliceIT {
      */
     private String url;
 
+    /**
+     * HTTP source server.
+     */
+    private SourceServer sourceserver;
+
+    /**
+     * Free port for starting source server.
+     */
+    private int sourceport;
+
     @BeforeEach
     void setUp() throws Exception {
         this.tmp = Files.createTempDirectory("");
@@ -117,7 +132,8 @@ final class ComposerProxySliceIT {
             )
         );
         final int port = this.server.start();
-        Testcontainers.exposeHostPorts(port);
+        this.sourceport = new RandomFreePort().get();
+        Testcontainers.exposeHostPorts(port, this.sourceport);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
@@ -130,6 +146,9 @@ final class ComposerProxySliceIT {
     @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() throws Exception {
         this.server.close();
+        if (this.sourceserver != null) {
+            this.sourceserver.close();
+        }
         this.client.stop();
         this.cntn.stop();
         try {
@@ -163,6 +182,51 @@ final class ComposerProxySliceIT {
                     )
                 )
             )
+        );
+    }
+
+    @Test
+    void installsPackageFromLocal() throws Exception {
+        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
+        final String vers = "1.1.2";
+        this.sourceserver = new SourceServer(ComposerProxySliceIT.VERTX, this.sourceport);
+        new ComposerSimple(this.url, name, vers)
+            .writeTo(this.tmp.resolve("composer.json"));
+        final String pkg = new String(
+            new PackageSimple(this.sourceserver.upload(), name).withSetVersion()
+        );
+        new BlockingStorage(this.storage).save(
+            new AllPackages(),
+            String.format(
+                "{\"packages\":{\"%s\":{\"%s\":%s}}}", name, vers, pkg
+            ).getBytes()
+        );
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new AllOf<>(
+                new ListOf<Matcher<? super String>>(
+                    new StringContains(false, String.format("Installs: %s:%s", name, vers)),
+                    new StringContains(false, String.format("- Downloading %s (%s)", name, vers)),
+                    new StringContains(
+                        false,
+                        String.format("- Installing %s (%s): Extracting archive", name, vers)
+                    )
+                )
+            )
+        );
+    }
+
+    @Test
+    void failsToInstallWhenPackageAbsent() throws Exception {
+        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
+        final String vers = "1.1.2";
+        new ComposerSimple(this.url, name, vers)
+            .writeTo(this.tmp.resolve("composer.json"));
+        new TestResource("packages.json").saveTo(this.storage, new AllPackages());
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            // @checkstyle LineLengthCheck (1 line)
+            new StringContains(false, String.format("Root composer.json requires %s, it could not be found in any version", name))
         );
     }
 
