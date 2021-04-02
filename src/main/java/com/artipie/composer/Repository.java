@@ -79,4 +79,11 @@ public interface Repository {
      * @return Bytes.
      */
     CompletableFuture<Content> value(Key key);
+
+    /**
+     * This file exists?
+     * @param key The key (file name)
+     * @return TRUE if exists, FALSE otherwise.
+     */
+    CompletableFuture<Boolean> exists(Key key);
 }

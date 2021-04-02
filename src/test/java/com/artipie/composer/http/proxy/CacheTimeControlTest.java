@@ -77,13 +77,21 @@ final class CacheTimeControlTest {
     }
 
     @Test
-    void falseForAbsentPackage() {
+    void falseForAbsentPackageInCacheFile() {
         new BlockingStorage(this.storage).save(
             CacheTimeControl.CACHE_FILE,
             Json.createObjectBuilder().build().toString().getBytes()
         );
         MatcherAssert.assertThat(
             this.validate("not/exist"),
+            new IsEqual<>(false)
+        );
+    }
+
+    @Test
+    void falseIfCacheIsAbsent() {
+        MatcherAssert.assertThat(
+            this.validate("file/notexist"),
             new IsEqual<>(false)
         );
     }

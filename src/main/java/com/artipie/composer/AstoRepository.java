@@ -173,6 +173,11 @@ public final class AstoRepository implements Repository {
         return this.storage.value(key);
     }
 
+    @Override
+    public CompletableFuture<Boolean> exists(final Key key) {
+        return this.storage.exists(key);
+    }
+
     /**
      * Add version field to composer json.
      * @param compos Composer json file
