@@ -24,9 +24,9 @@
 package com.artipie.composer.http.proxy;
 
 import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
 import com.artipie.asto.cache.CacheControl;
 import com.artipie.asto.cache.Remote;
-import com.artipie.composer.Repository;
 import com.artipie.composer.misc.ContentAsJson;
 import java.time.Duration;
 import java.time.Instant;
@@ -55,37 +55,37 @@ final class CacheTimeControl implements CacheControl {
     private final Duration expiration;
 
     /**
-     * Repository.
+     * Storage.
      */
-    private final Repository repo;
+    private final Storage storage;
 
     /**
      * Ctor with default value for time of expiration.
-     * @param repository Repository
+     * @param storage Storage
      * @checkstyle MagicNumberCheck (3 lines)
      */
-    CacheTimeControl(final Repository repository) {
-        this(repository, Duration.ofMinutes(10));
+    CacheTimeControl(final Storage storage) {
+        this(storage, Duration.ofMinutes(10));
     }
 
     /**
      * Ctor.
-     * @param repository Repository
+     * @param storage Storage
      * @param expiration Time after which cached items are not valid
      */
-    CacheTimeControl(final Repository repository, final Duration expiration) {
-        this.repo = repository;
+    CacheTimeControl(final Storage storage, final Duration expiration) {
+        this.storage = storage;
         this.expiration = expiration;
     }
 
     @Override
     public CompletionStage<Boolean> validate(final Key item, final Remote content) {
-        return this.repo.exists(CacheTimeControl.CACHE_FILE)
+        return this.storage.exists(CacheTimeControl.CACHE_FILE)
             .thenCompose(
                 exists -> {
                     final CompletionStage<Boolean> res;
                     if (exists) {
-                        res = this.repo.value(CacheTimeControl.CACHE_FILE)
+                        res = this.storage.value(CacheTimeControl.CACHE_FILE)
                             .thenApply(ContentAsJson::new)
                             .thenCompose(ContentAsJson::value)
                             .thenApply(

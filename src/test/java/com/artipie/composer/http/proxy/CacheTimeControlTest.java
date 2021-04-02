@@ -28,7 +28,6 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.cache.Remote;
 import com.artipie.asto.memory.InMemoryStorage;
-import com.artipie.composer.AstoRepository;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -97,7 +96,7 @@ final class CacheTimeControlTest {
     }
 
     private boolean validate(final String pkg) {
-        return new CacheTimeControl(new AstoRepository(this.storage))
+        return new CacheTimeControl(this.storage)
             .validate(new Key.From(pkg), Remote.EMPTY)
             .toCompletableFuture().join();
     }
