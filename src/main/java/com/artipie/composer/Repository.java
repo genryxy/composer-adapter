@@ -26,6 +26,7 @@ package com.artipie.composer;
 
 import com.artipie.asto.Content;
 import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
 import com.artipie.composer.http.Archive;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -79,4 +80,12 @@ public interface Repository {
      * @return Bytes.
      */
     CompletableFuture<Content> value(Key key);
+
+    /**
+     * Obtains storage for repository. It can be useful for implementation cache
+     * or in other places where {@link Storage} instance is required for
+     * using classes which are created in asto module.
+     * @return Storage instance
+     */
+    Storage storage();
 }
