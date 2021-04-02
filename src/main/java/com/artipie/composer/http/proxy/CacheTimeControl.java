@@ -36,7 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Check if saved item is expired  by comparing time value.
+ * Check if saved item is expired by comparing time value.
  * @since 0.4
  * @todo #77:30min Move this class to asto.
  *  Move this class to asto module as soon as the implementation will
