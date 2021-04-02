@@ -24,6 +24,7 @@
 package com.artipie.composer.http.proxy;
 
 import com.artipie.asto.Content;
+import com.artipie.asto.Key;
 import com.artipie.asto.cache.Cache;
 import com.artipie.asto.cache.Remote;
 import com.artipie.composer.JsonPackages;
@@ -36,6 +37,7 @@ import com.artipie.http.async.AsyncResponse;
 import com.artipie.http.rq.RequestLineFrom;
 import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.StandardRs;
+import com.jcabi.log.Logger;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Optional;
@@ -99,29 +101,31 @@ final class CachedProxySlice implements Slice {
             .replaceAll("\\^.*", "")
             .replaceAll(".json$", "");
         return new AsyncResponse(
-            this.repo.packages().thenApply(
-                pckgs -> pckgs.orElse(new JsonPackages())
-            ).thenCompose(Packages::content)
-            .thenCombine(
-                this.packageFromRemote(line),
-                (lcl, rmt) -> new MergePackage.WithRemote(name, lcl).merge(rmt)
-            ).thenCompose(Function.identity())
-            .handle(
+            this.cache.load(
+                new Key.From(name),
+                new Remote.WithErrorHandling(
+                    () -> this.repo.packages().thenApply(
+                        pckgs -> pckgs.orElse(new JsonPackages())
+                    ).thenCompose(Packages::content)
+                        .thenCombine(
+                            this.packageFromRemote(line),
+                            (lcl, rmt) -> new MergePackage.WithRemote(name, lcl).merge(rmt)
+                        ).thenCompose(Function.identity())
+                        .thenApply(Function.identity())
+                ),
+                new CacheTimeControl(this.repo.storage())
+            ).handle(
                 (pkgs, throwable) -> {
-                    final CompletableFuture<Response> res = new CompletableFuture<>();
+                    final Response res;
                     if (throwable == null && pkgs.isPresent()) {
-                        res.complete(
-                            new RsWithBody(
-                                StandardRs.OK,
-                                pkgs.get()
-                            )
-                        );
+                        res = new RsWithBody(StandardRs.OK, pkgs.get());
                     } else {
-                        res.complete(StandardRs.NOT_FOUND);
+                        Logger.warn(this, "Failed to read cached item: %[exception]s", throwable);
+                        res = StandardRs.NOT_FOUND;
                     }
                     return res;
                 }
-            ).thenCompose(Function.identity())
+            )
         );
     }
 

@@ -31,12 +31,14 @@ import com.artipie.composer.http.Archive;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 
 /**
  * PHP Composer repository.
  *
  * @since 0.3
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public interface Repository {
 
     /**
@@ -88,4 +90,47 @@ public interface Repository {
      * @return Storage instance
      */
     Storage storage();
+
+    /**
+     * This file exists?
+     *
+     * @param key The key (file name)
+     * @return TRUE if exists, FALSE otherwise
+     */
+    CompletableFuture<Boolean> exists(Key key);
+
+    /**
+     * Saves the bytes to the specified key.
+     * @param key The key
+     * @param content Bytes to save
+     * @return Completion or error signal.
+     */
+    CompletableFuture<Void> save(Key key, Content content);
+
+    /**
+     * Moves value from one location to another.
+     * @param source Source key.
+     * @param destination Destination key.
+     * @return Completion or error signal.
+     */
+    CompletableFuture<Void> move(Key source, Key destination);
+
+    /**
+     * Removes value from storage. Fails if value does not exist.
+     * @param key Key for value to be deleted.
+     * @return Completion or error signal.
+     */
+    CompletableFuture<Void> delete(Key key);
+
+    /**
+     * Runs operation exclusively for specified key.
+     * @param key Key which is scope of operation.
+     * @param operation Operation to be performed exclusively.
+     * @param <T> Operation result type.
+     * @return Result of operation.
+     */
+    <T> CompletionStage<T> exclusively(
+        Key key,
+        Function<Storage, CompletionStage<T>> operation
+    );
 }

@@ -45,6 +45,7 @@ import javax.json.JsonObject;
  *
  * @since 0.3
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public final class AstoRepository implements Repository {
 
     /**
@@ -176,6 +177,34 @@ public final class AstoRepository implements Repository {
     @Override
     public Storage storage() {
         return this.asto;
+    }
+
+    @Override
+    public CompletableFuture<Boolean> exists(final Key key) {
+        return this.asto.exists(key);
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final Key key, final Content content) {
+        return this.asto.save(key, content);
+    }
+
+    @Override
+    public <T> CompletionStage<T> exclusively(
+        final Key key,
+        final Function<Storage, CompletionStage<T>> operation
+    ) {
+        return this.asto.exclusively(key, operation);
+    }
+
+    @Override
+    public CompletableFuture<Void> move(final Key source, final Key destination) {
+        return this.asto.move(source, destination);
+    }
+
+    @Override
+    public CompletableFuture<Void> delete(final Key key) {
+        return this.asto.delete(key);
     }
 
     /**
