@@ -169,7 +169,7 @@ final class ComposerStorageCacheTest {
     }
 
     @Test
-    void returnsNotFoundOnRemoteErrorAndEmptyCache() {
+    void returnsEmptyOnRemoteErrorAndEmptyCache() {
         MatcherAssert.assertThat(
             "Was not empty for remote error and empty cache",
             new ComposerStorageCache(this.repo).load(
