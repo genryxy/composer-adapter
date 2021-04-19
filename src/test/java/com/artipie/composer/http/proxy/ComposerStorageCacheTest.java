@@ -113,7 +113,6 @@ final class ComposerStorageCacheTest {
             new Content.From(body)
         ).join();
         MatcherAssert.assertThat(
-            "Content was not obtained from cache",
             new PublisherAs(
                 new ComposerStorageCache(this.repo).load(
                     new Key.From(key),

@@ -37,7 +37,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -78,10 +77,9 @@ final class ComposerStorageCache implements Cache {
         return this.repo.exists(cached)
             .thenCompose(
                 exists -> {
-                    final CompletionStage<Optional<? extends Content>> cacheres;
-                    final AtomicReference<Boolean> fromcache = new AtomicReference<>();
+                    final CompletionStage<Optional<? extends Content>> res;
                     if (exists) {
-                        cacheres = control.validate(
+                        res = control.validate(
                             name,
                             () -> CompletableFuture.completedFuture(Optional.empty())
                         ).thenCompose(
@@ -89,38 +87,56 @@ final class ComposerStorageCache implements Cache {
                                 final CompletionStage<Optional<Content>> cacheval;
                                 if (valid) {
                                     cacheval = this.repo.value(cached).thenApply(Optional::of);
-                                    fromcache.set(true);
                                 } else {
                                     cacheval = CompletableFuture.completedFuture(Optional.empty());
-                                    fromcache.set(false);
                                 }
                                 return cacheval;
                             }
-                        ).thenApply(Function.identity());
-                    } else {
-                        cacheres = CompletableFuture.completedFuture(Optional.empty());
-                    }
-                    if (fromcache.get() == null || !fromcache.get()) {
-                        return CompletableFuture.supplyAsync(() -> null)
-                            .thenCombine(
-                                remote.get(),
-                                (nothing, content) -> {
-                                    final CompletionStage<Optional<? extends Content>> res;
-                                    if (content.isPresent()) {
-                                        res = this.repo.save(cached, content.get())
-                                            .thenCompose(noth -> this.updateCacheFile(cached, name))
-                                            .thenCompose(ignore -> this.repo.value(cached))
-                                            .thenApply(Optional::of);
-                                    } else {
-                                        res = CompletableFuture.completedFuture(Optional.empty());
-                                    }
-                                    return res;
+                        ).thenCompose(
+                            cacheres -> {
+                                final CompletionStage<Optional<? extends Content>> rmtorcache;
+                                if (cacheres.isPresent()) {
+                                    rmtorcache = CompletableFuture.completedFuture(cacheres);
+                                } else {
+                                    rmtorcache = this.contentFromRemote(remote, cached, name);
                                 }
-                            ).thenCompose(Function.identity());
+                                return rmtorcache;
+                            }
+                        );
+                    } else {
+                        res = this.contentFromRemote(remote, cached, name);
                     }
-                    return cacheres;
+                    return res;
                 }
             );
+    }
+
+    /**
+     * Obtains and caches content from remote in case of existence, empty otherwise.
+     * @param remote Remote content
+     * @param cached Key for obtaining cached package
+     * @param name Name of cached item (usually like `vendor/package`)
+     * @return Content from remote if exists, empty otherwise.
+     */
+    private CompletableFuture<Optional<? extends Content>> contentFromRemote(
+        final Remote remote, final Key cached, final Key name
+    ) {
+        return CompletableFuture.supplyAsync(() -> null)
+            .thenCombine(
+                remote.get(),
+                (nothing, content) -> {
+                    final CompletionStage<Optional<? extends Content>> res;
+                    if (content.isPresent()) {
+                        res = this.repo.save(cached, content.get())
+                            .thenCompose(noth -> this.updateCacheFile(cached, name))
+                            .thenCompose(ignore -> this.repo.value(cached))
+                            .thenApply(Optional::of);
+                    } else {
+                        res = CompletableFuture.completedFuture(Optional.empty());
+                    }
+                    return res;
+                }
+            ).thenCompose(Function.identity());
     }
 
     /**
