@@ -53,7 +53,7 @@ final class ComposerStorageCache implements Cache {
     /**
      * Folder for cached items.
      */
-    private static final String CACHE_FOLDER = "cache";
+    static final String CACHE_FOLDER = "cache";
 
     /**
      * Repository.
@@ -78,10 +78,11 @@ final class ComposerStorageCache implements Cache {
         return this.repo.exists(cached)
             .thenCompose(
                 exists -> {
+                    final CompletionStage<Optional<? extends Content>> cacheres;
                     final AtomicReference<Boolean> fromcache = new AtomicReference<>();
                     if (exists) {
-                        return control.validate(
-                            cached,
+                        cacheres = control.validate(
+                            name,
                             () -> CompletableFuture.completedFuture(Optional.empty())
                         ).thenCompose(
                             valid -> {
@@ -96,6 +97,8 @@ final class ComposerStorageCache implements Cache {
                                 return cacheval;
                             }
                         ).thenApply(Function.identity());
+                    } else {
+                        cacheres = CompletableFuture.completedFuture(Optional.empty());
                     }
                     if (fromcache.get() == null || !fromcache.get()) {
                         return CompletableFuture.supplyAsync(() -> null)
@@ -115,7 +118,7 @@ final class ComposerStorageCache implements Cache {
                                 }
                             ).thenCompose(Function.identity());
                     }
-                    return CompletableFuture.completedFuture(Optional.empty());
+                    return cacheres;
                 }
             );
     }
