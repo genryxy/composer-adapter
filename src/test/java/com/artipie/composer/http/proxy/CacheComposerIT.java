@@ -23,14 +23,12 @@
  */
 package com.artipie.composer.http.proxy;
 
+import com.artipie.asto.Content;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
-import com.artipie.asto.cache.Cache;
 import com.artipie.asto.fs.FileStorage;
-import com.artipie.asto.test.TestResource;
-import com.artipie.composer.AllPackages;
 import com.artipie.composer.AstoRepository;
+import com.artipie.composer.misc.ContentAsJson;
 import com.artipie.composer.test.ComposerSimple;
 import com.artipie.composer.test.PackageSimple;
 import com.artipie.composer.test.SourceServer;
@@ -45,10 +43,15 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import javax.json.Json;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
+import org.hamcrest.core.IsEqual;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -68,7 +71,7 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
  */
 @DisabledOnOs(OS.WINDOWS)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-final class ComposerProxySliceIT {
+final class CacheComposerIT {
     /**
      * Vertx instance.
      */
@@ -120,14 +123,14 @@ final class ComposerProxySliceIT {
         this.client.start();
         this.storage = new FileStorage(this.tmp);
         this.server = new VertxSliceServer(
-            ComposerProxySliceIT.VERTX,
+            CacheComposerIT.VERTX,
             new LoggingSlice(
                 new ComposerProxySlice(
                     this.client,
                     URI.create("https://packagist.org"),
                     new AstoRepository(this.storage),
                     Authenticator.ANONYMOUS,
-                    Cache.NOP
+                    new ComposerStorageCache(new AstoRepository(this.storage))
                 )
             )
         );
@@ -160,16 +163,16 @@ final class ComposerProxySliceIT {
 
     @AfterAll
     static void close() {
-        ComposerProxySliceIT.VERTX.close();
+        CacheComposerIT.VERTX.close();
     }
 
     @Test
-    void installsPackageFromRemote() throws Exception {
-        new ComposerSimple(this.url, "psr/log", "1.1.3")
+    void installsPackageFromRemoteAndCachesIt() throws Exception {
+        final String name = "psr/log";
+        new ComposerSimple(this.url, name, "1.1.3")
             .writeTo(this.tmp.resolve("composer.json"));
-        new TestResource("packages-remote.json")
-            .saveTo(this.storage, new Key.From("packages.json"));
         MatcherAssert.assertThat(
+            "Installation failed",
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
                 new ListOf<Matcher<? super String>>(
@@ -182,24 +185,48 @@ final class ComposerProxySliceIT {
                 )
             )
         );
+        MatcherAssert.assertThat(
+            "Index was not cached",
+            this.storage.exists(
+                new Key.From(ComposerStorageCache.CACHE_FOLDER, String.format("%s.json", name))
+            ).join(),
+            new IsEqual<>(true)
+        );
+        MatcherAssert.assertThat(
+            "Info about cached package was not added to the cache file",
+            new ContentAsJson(
+                this.storage.value(CacheTimeControl.CACHE_FILE).join()
+            ).value().toCompletableFuture().join()
+            .containsKey(name),
+            new IsEqual<>(true)
+        );
     }
 
     @Test
-    void installsPackageFromLocal() throws Exception {
+    void installsPackageFromCache() throws Exception {
         final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
         final String vers = "1.1.2";
-        this.sourceserver = new SourceServer(ComposerProxySliceIT.VERTX, this.sourceport);
-        new ComposerSimple(this.url, name, vers)
-            .writeTo(this.tmp.resolve("composer.json"));
-        final String pkg = new String(
-            new PackageSimple(this.sourceserver.upload(), name).withSetVersion()
-        );
-        new BlockingStorage(this.storage).save(
-            new AllPackages(),
-            String.format(
-                "{\"packages\":{\"%s\":{\"%s\":%s}}}", name, vers, pkg
-            ).getBytes()
-        );
+        this.sourceserver = new SourceServer(CacheComposerIT.VERTX, this.sourceport);
+        this.storage.save(
+            CacheTimeControl.CACHE_FILE,
+            new Content.From(
+                Json.createObjectBuilder().add(
+                    name,
+                    ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC).toString()
+                ).build().toString()
+                .getBytes()
+            )
+        ).join();
+        new ComposerSimple(this.url, name, vers).writeTo(this.tmp.resolve("composer.json"));
+        final byte[] pkg = new PackageSimple(this.sourceserver.upload(), name).withSetVersion();
+        this.storage.save(
+            new Key.From(ComposerStorageCache.CACHE_FOLDER, String.format("%s.json", name)),
+            new Content.From(
+                String.format(
+                    "{\"packages\":{\"%s\":{\"%s\":%s}}}", name, vers, new String(pkg)
+                ).getBytes()
+            )
+        ).join();
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
@@ -212,20 +239,6 @@ final class ComposerProxySliceIT {
                     )
                 )
             )
-        );
-    }
-
-    @Test
-    void failsToInstallWhenPackageAbsent() throws Exception {
-        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
-        final String vers = "1.1.2";
-        new ComposerSimple(this.url, name, vers)
-            .writeTo(this.tmp.resolve("composer.json"));
-        new TestResource("packages.json").saveTo(this.storage, new AllPackages());
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            // @checkstyle LineLengthCheck (1 line)
-            new StringContains(false, String.format("Root composer.json requires %s, it could not be found in any version", name))
         );
     }
 

@@ -116,14 +116,14 @@ final class HttpZipArchiveIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         this.server.stop();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.tmp.toFile());
+            Files.deleteIfExists(this.tmp);
         } catch (final IOException ex) {
-            ex.printStackTrace();
+            Logger.error(this, "Failed to clean directory %[exception]s", ex);
         }
     }
 

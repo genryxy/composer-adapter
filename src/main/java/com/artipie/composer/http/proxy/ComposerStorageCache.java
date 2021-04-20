@@ -48,7 +48,7 @@ import javax.json.JsonObject;
  * @since 0.4
  * @checkstyle ReturnCountCheck (500 lines)
  */
-final class ComposerStorageCache implements Cache {
+public final class ComposerStorageCache implements Cache {
     /**
      * Folder for cached items.
      */
@@ -63,7 +63,7 @@ final class ComposerStorageCache implements Cache {
      * Ctor.
      * @param repository Repository
      */
-    ComposerStorageCache(final Repository repository) {
+    public ComposerStorageCache(final Repository repository) {
         this.repo = repository;
     }
 
