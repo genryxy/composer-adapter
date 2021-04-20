@@ -146,7 +146,6 @@ final class CacheComposerIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() throws Exception {
         this.server.close();
         if (this.sourceserver != null) {

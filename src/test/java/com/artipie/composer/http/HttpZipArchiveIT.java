@@ -116,7 +116,6 @@ final class HttpZipArchiveIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         this.server.stop();
         this.cntn.stop();
