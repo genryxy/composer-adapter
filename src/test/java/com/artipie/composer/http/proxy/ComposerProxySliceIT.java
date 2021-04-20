@@ -155,7 +155,7 @@ final class ComposerProxySliceIT {
             FileUtils.cleanDirectory(this.tmp.toFile());
             Files.deleteIfExists(this.tmp);
         } catch (final IOException ex) {
-            ex.printStackTrace();
+            Logger.error(this, "Failed to clean directory %[exception]s", ex);
         }
     }
 

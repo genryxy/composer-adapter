@@ -141,8 +141,9 @@ class RepositoryHttpIT {
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.temp.toFile());
+            Files.deleteIfExists(this.temp);
         } catch (final IOException ex) {
-            ex.printStackTrace();
+            Logger.error(this, "Failed to clean directory %[exception]s", ex);
         }
     }
 
