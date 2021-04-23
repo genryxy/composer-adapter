@@ -74,7 +74,90 @@ for more technical details.
 - [x] Adding package to repository [#1](https://github.com/artipie/composer-adapter/issues/1)
 - [x] HTTP support for adding package as `composer.json` [#22](https://github.com/artipie/composer-adapter/issues/22)
 - [x] HTTP support for getting package metadata [#24](https://github.com/artipie/composer-adapter/issues/24)
-- [ ] HTTP support for adding package as ZIP archive [#23](https://github.com/artipie/composer-adapter/issues/23)
+- [x] HTTP support for adding package as ZIP archive [#23](https://github.com/artipie/composer-adapter/issues/23)
+
+## Composer repository structure
+Composer [has](https://getcomposer.org/doc/05-repositories.md#composer) 
+the following repository structure:
+```
+(repository root) 
+| -packages.json
+| +-vendor
+  | -composer.json
+  | -composer.lock
+  | +-some_vendor
+  | | +-package_name
+  | | | -files_for_package_name  
+  | -autoload.php
+  | +-composer
+  | | -files_for_composer
+```
+`composer.lock` file is generated [automatically](https://getcomposer.org/doc/01-basic-usage.md#installing-without-composer-lock).
+It is necessary for installing packages of specified versions. If it does not exist, it will be generated
+after calling the command `composer install` automatically according to `composer.json` file.  
+By calling the command `composer update` `composer.lock` will be automatically updated according 
+to existing `composer.json`.
+
+## Content of `composer.json`
+There are required packages in this file with specified version. For example, [this file](https://getcomposer.org/doc/01-basic-usage.md#the-require-key).
+Also, in this file the type of repository could be defined. There are several types of [repositories](https://getcomposer.org/doc/05-repositories.md#repositories),
+but it is necessary to pay attention to [composer](https://getcomposer.org/doc/05-repositories.md#composer) and [artifact](https://getcomposer.org/doc/05-repositories.md#artifact)
+repositores.
+Example of `composer.json` file for `composer` repository:
+```json
+{
+  "repositories": [ 
+    {
+      "type": "composer",
+      "url": "http://central.artipie.com/"
+    },
+    {
+      "packagist.org": false
+    }
+  ],
+  "require": { 
+    "psr/log": "1.1.3" 
+  }
+}
+```
+Example of `composer.json` file for `artifact` repository:
+```json
+{
+  "repositories": [ 
+    {
+      "type": "artifact",
+      "url": "path/to/directory/with/zips/"
+    },
+    {
+      "packagist.org": false
+    }
+  ],
+  "require": { 
+    "psr/log": "1.1.3" 
+  }
+}
+```
+
+## Packages index file
+The only [required](https://getcomposer.org/doc/05-repositories.md#packages) field is `package`. An example of JSON file:
+```json
+{
+  "packages": {
+    "vendor/package-name": {
+      "0.0.1": { 
+        "name (required)": "vendor/package-name",
+        "version (required)": "0.0.1",
+        "dist (required)": {
+          "url": "https://host:port/path/vendor/package-name-0.0.1.zip",
+          "type": "zip"
+        } 
+      },
+      "1.0.0": { "similar structure": "" }
+    }
+  }
+}
+```
+So, information about a specific version of package is obtained from remote source by specifying url.
 
 ## How to contribute
 
