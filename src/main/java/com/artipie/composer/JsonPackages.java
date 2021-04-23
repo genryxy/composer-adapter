@@ -29,6 +29,7 @@ import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.composer.misc.ContentAsJson;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import javax.json.Json;
@@ -75,7 +76,7 @@ public final class JsonPackages implements Packages {
     }
 
     @Override
-    public CompletionStage<Packages> add(final Package pack) {
+    public CompletionStage<Packages> add(final Package pack, final Optional<String> vers) {
         return new ContentAsJson(this.source)
             .value()
             .thenCompose(
@@ -94,9 +95,23 @@ public final class JsonPackages implements Packages {
                                 } else {
                                     builder = Json.createObjectBuilder(pkgs.getJsonObject(pname));
                                 }
-                                return pack.version().thenCombine(
+                                return pack.version(vers).thenCombine(
                                     pack.json(),
-                                    builder::add
+                                    (vrsn, pkg) -> {
+                                        if (!vrsn.isPresent()) {
+                                            // @checkstyle LineLengthCheck (1 line)
+                                            throw new IllegalStateException(String.format("Failed to add package `%s` to packages.json because version is absent", pname));
+                                        }
+                                        final JsonObject foradd;
+                                        if (pkg.containsKey(JsonPackage.VRSN)) {
+                                            foradd = pkg;
+                                        } else {
+                                            foradd = Json.createObjectBuilder(pkg)
+                                                .add(JsonPackage.VRSN, vrsn.get())
+                                                .build();
+                                        }
+                                        return builder.add(vrsn.get(), foradd);
+                                    }
                                 ).thenApply(
                                     bldr -> new JsonPackages(
                                         toContent(

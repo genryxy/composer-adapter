@@ -21,26 +21,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artipie.composer.http;
+package com.artipie.composer.http.proxy;
 
+import com.artipie.asto.Content;
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
 import com.artipie.asto.fs.FileStorage;
-import com.artipie.asto.test.TestResource;
 import com.artipie.composer.AstoRepository;
+import com.artipie.composer.misc.ContentAsJson;
 import com.artipie.composer.test.ComposerSimple;
-import com.artipie.composer.test.HttpUrlUpload;
+import com.artipie.composer.test.PackageSimple;
+import com.artipie.composer.test.SourceServer;
+import com.artipie.http.client.auth.Authenticator;
+import com.artipie.http.client.jetty.JettyClientSlices;
 import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import javax.json.Json;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
+import org.hamcrest.core.IsEqual;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -54,19 +65,22 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
- * Integration test for PHP Composer repository for working
- * with archive in ZIP format.
- *
+ * Integration test for {@link ComposerProxySlice}.
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-final class HttpZipArchiveIT {
+final class CacheComposerIT {
     /**
-     * Vertx instance for using in test.
+     * Vertx instance.
      */
     private static final Vertx VERTX = Vertx.vertx();
+
+    /**
+     * Jetty client.
+     */
+    private final JettyClientSlices client = new JettyClientSlices();
 
     /**
      * Temporary directory.
@@ -74,14 +88,19 @@ final class HttpZipArchiveIT {
     private Path tmp;
 
     /**
-     * HTTP server hosting repository.
+     * Vertx slice server instance.
      */
     private VertxSliceServer server;
 
     /**
-     * Test container.
+     * Container.
      */
     private GenericContainer<?> cntn;
+
+    /**
+     * Storage.
+     */
+    private Storage storage;
 
     /**
      * Server url.
@@ -89,35 +108,50 @@ final class HttpZipArchiveIT {
     private String url;
 
     /**
-     * Server port.
+     * HTTP source server.
      */
-    private int port;
+    private SourceServer sourceserver;
+
+    /**
+     * Free port for starting source server.
+     */
+    private int sourceport;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() throws Exception {
         this.tmp = Files.createTempDirectory("");
-        this.port = new RandomFreePort().get();
-        this.url = String.format("http://host.testcontainers.internal:%s", this.port);
-        final AstoRepository asto = new AstoRepository(
-            new FileStorage(this.tmp), Optional.of(this.url)
-        );
+        this.client.start();
+        this.storage = new FileStorage(this.tmp);
         this.server = new VertxSliceServer(
-            HttpZipArchiveIT.VERTX,
-            new LoggingSlice(new PhpComposer(asto)),
-            this.port
+            CacheComposerIT.VERTX,
+            new LoggingSlice(
+                new ComposerProxySlice(
+                    this.client,
+                    URI.create("https://packagist.org"),
+                    new AstoRepository(this.storage),
+                    Authenticator.ANONYMOUS,
+                    new ComposerStorageCache(new AstoRepository(this.storage))
+                )
+            )
         );
-        this.server.start();
-        Testcontainers.exposeHostPorts(this.port);
+        final int port = this.server.start();
+        this.sourceport = new RandomFreePort().get();
+        Testcontainers.exposeHostPorts(port, this.sourceport);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
+        this.url = String.format("http://host.testcontainers.internal:%s", port);
     }
 
     @AfterEach
-    void tearDown() {
-        this.server.stop();
+    void tearDown() throws Exception {
+        this.server.close();
+        if (this.sourceserver != null) {
+            this.sourceserver.close();
+        }
+        this.client.stop();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.tmp.toFile());
@@ -129,15 +163,16 @@ final class HttpZipArchiveIT {
 
     @AfterAll
     static void close() {
-        HttpZipArchiveIT.VERTX.close();
+        CacheComposerIT.VERTX.close();
     }
 
     @Test
-    void shouldInstallAddedPackageThroughComposerRepo() throws Exception {
-        this.addArchive();
-        new ComposerSimple(this.url, "psr/log", "1.1.3")
+    void installsPackageFromRemoteAndCachesIt() throws Exception {
+        final String name = "psr/log";
+        new ComposerSimple(this.url, name, "1.1.3")
             .writeTo(this.tmp.resolve("composer.json"));
         MatcherAssert.assertThat(
+            "Installation failed",
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
                 new ListOf<Matcher<? super String>>(
@@ -150,74 +185,60 @@ final class HttpZipArchiveIT {
                 )
             )
         );
+        MatcherAssert.assertThat(
+            "Index was not cached",
+            this.storage.exists(
+                new Key.From(ComposerStorageCache.CACHE_FOLDER, String.format("%s.json", name))
+            ).join(),
+            new IsEqual<>(true)
+        );
+        MatcherAssert.assertThat(
+            "Info about cached package was not added to the cache file",
+            new ContentAsJson(
+                this.storage.value(CacheTimeControl.CACHE_FILE).join()
+            ).value().toCompletableFuture().join()
+            .containsKey(name),
+            new IsEqual<>(true)
+        );
     }
 
     @Test
-    void shouldInstallAddedPackageThroughArtifactsRepo() throws Exception {
-        this.addArchive();
-        this.writeComposer("artifacts");
+    void installsPackageFromCache() throws Exception {
+        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
+        final String vers = "1.1.2";
+        this.sourceserver = new SourceServer(CacheComposerIT.VERTX, this.sourceport);
+        this.storage.save(
+            CacheTimeControl.CACHE_FILE,
+            new Content.From(
+                Json.createObjectBuilder().add(
+                    name,
+                    ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC).toString()
+                ).build().toString()
+                .getBytes()
+            )
+        ).join();
+        new ComposerSimple(this.url, name, vers).writeTo(this.tmp.resolve("composer.json"));
+        final byte[] pkg = new PackageSimple(this.sourceserver.upload(), name).withSetVersion();
+        this.storage.save(
+            new Key.From(ComposerStorageCache.CACHE_FOLDER, String.format("%s.json", name)),
+            new Content.From(
+                String.format(
+                    "{\"packages\":{\"%s\":{\"%s\":%s}}}", name, vers, new String(pkg)
+                ).getBytes()
+            )
+        ).join();
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
                 new ListOf<Matcher<? super String>>(
-                    new StringContains(false, "Installs: psr/log:1.1.3"),
-                    new StringContains(false, "- Downloading psr/log (1.1.3)"),
+                    new StringContains(false, String.format("Installs: %s:%s", name, vers)),
+                    new StringContains(false, String.format("- Downloading %s (%s)", name, vers)),
                     new StringContains(
                         false,
-                        "- Installing psr/log (1.1.3): Extracting archive"
+                        String.format("- Installing %s (%s): Extracting archive", name, vers)
                     )
                 )
             )
-        );
-    }
-
-    @Test
-    void shouldFailGetAbsentInArtifactsPackage() throws Exception {
-        this.tmp.resolve("artifacts").toFile().mkdir();
-        this.writeComposer("artifacts");
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new StringContains(
-                "Root composer.json requires psr/log, it could not be found in any version"
-            )
-        );
-    }
-
-    @Test
-    void shouldFailGetPackageInCaseOfWrongUrl() throws Exception {
-        final String wrong = "wrongfolder";
-        this.tmp.resolve(wrong).toFile().mkdir();
-        this.addArchive();
-        this.writeComposer(wrong);
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new StringContains(
-                "Root composer.json requires psr/log, it could not be found in any version"
-            )
-        );
-    }
-
-    private void addArchive() throws Exception {
-        final String name = "log-1.1.3.zip";
-        new HttpUrlUpload(
-            String.format("http://localhost:%d/%s", this.port, name),
-            new TestResource(name).asBytes()
-        ).upload(Optional.empty());
-    }
-
-    private void writeComposer(final String path) throws IOException {
-        Files.write(
-            this.tmp.resolve("composer.json"),
-            String.join(
-                "",
-                "{",
-                "\"repositories\": [",
-                String.format("{\"type\": \"artifact\", \"url\": \"%s\"},", path),
-                "{\"packagist.org\": false}",
-                "],",
-                "\"require\": { \"psr/log\": \"1.1.3\" }",
-                "}"
-            ).getBytes()
         );
     }
 

@@ -45,6 +45,7 @@ import javax.json.JsonObject;
  *
  * @since 0.3
  */
+@SuppressWarnings("PMD.TooManyMethods")
 public final class AstoRepository implements Repository {
 
     /**
@@ -55,7 +56,7 @@ public final class AstoRepository implements Repository {
     /**
      * The storage.
      */
-    private final Storage storage;
+    private final Storage asto;
 
     /**
      * Prefix with url for uploaded archive.
@@ -76,7 +77,7 @@ public final class AstoRepository implements Repository {
      * @param prefix Prefix with url for uploaded archive.
      */
     public AstoRepository(final Storage storage, final Optional<String> prefix) {
-        this.storage = storage;
+        this.asto = storage;
         this.prefix = prefix;
     }
 
@@ -91,10 +92,10 @@ public final class AstoRepository implements Repository {
     }
 
     @Override
-    public CompletableFuture<Void> addJson(final Content content) {
+    public CompletableFuture<Void> addJson(final Content content, final Optional<String> vers) {
         final Key key = new Key.From(UUID.randomUUID().toString());
-        return this.storage.save(key, content).thenCompose(
-            nothing -> this.storage.value(key)
+        return this.asto.save(key, content).thenCompose(
+            nothing -> this.asto.value(key)
                 .thenApply(PublisherAs::new)
                 .thenCompose(PublisherAs::bytes)
                 .thenCompose(
@@ -103,24 +104,24 @@ public final class AstoRepository implements Repository {
                         return CompletableFuture.allOf(
                             this.packages().thenCompose(
                                 packages -> packages.orElse(new JsonPackages())
-                                    .add(pack)
+                                    .add(pack, vers)
                                     .thenCompose(
                                         pkgs -> pkgs.save(
-                                            this.storage, AstoRepository.ALL_PACKAGES
+                                            this.asto, AstoRepository.ALL_PACKAGES
                                         )
                                     )
                             ).toCompletableFuture(),
                             pack.name().thenCompose(
                                 name -> this.packages(name).thenCompose(
                                     packages -> packages.orElse(new JsonPackages())
-                                        .add(pack)
+                                        .add(pack, vers)
                                         .thenCompose(
-                                            pkgs -> pkgs.save(this.storage, name.key())
+                                            pkgs -> pkgs.save(this.asto, name.key())
                                         )
                                 )
                             ).toCompletableFuture()
                         ).thenCompose(
-                            ignored -> this.storage.delete(key)
+                            ignored -> this.asto.delete(key)
                         );
                     }
                 )
@@ -132,33 +133,34 @@ public final class AstoRepository implements Repository {
         final Key key = new Key.From("artifacts", archive.name().full());
         final Key rand = new Key.From(UUID.randomUUID().toString());
         final Key tmp = new Key.From(rand, archive.name().full());
-        return this.storage.save(key, content)
+        return this.asto.save(key, content)
             .thenCompose(
-                nothing -> this.storage.value(key)
+                nothing -> this.asto.value(key)
                     .thenCompose(
                         cont -> archive.composerFrom(cont)
                             .thenApply(
                                 compos -> AstoRepository.addVersion(compos, archive.name())
                             ).thenCombine(
-                                this.storage.value(key),
+                                this.asto.value(key),
                                 (compos, cnt) -> archive.replaceComposerWith(
                                     cnt,
                                     compos.toString()
                                         .getBytes(StandardCharsets.UTF_8)
-                                ).thenCompose(arch -> this.storage.save(tmp, arch))
-                                .thenCompose(noth -> this.storage.delete(key))
-                                .thenCompose(noth -> this.storage.move(tmp, key))
+                                ).thenCompose(arch -> this.asto.save(tmp, arch))
+                                .thenCompose(noth -> this.asto.delete(key))
+                                .thenCompose(noth -> this.asto.move(tmp, key))
                                 .thenCombine(
                                     this.packages(),
                                     (noth, packages) -> packages.orElse(new JsonPackages())
                                         .add(
                                             new JsonPackage(
                                                 new Content.From(this.addDist(compos, key))
-                                            )
+                                            ),
+                                            Optional.empty()
                                         )
                                         .thenCompose(
                                             pkgs -> pkgs.save(
-                                                this.storage, AstoRepository.ALL_PACKAGES
+                                                this.asto, AstoRepository.ALL_PACKAGES
                                             )
                                         )
                                 ).thenCompose(Function.identity())
@@ -169,7 +171,40 @@ public final class AstoRepository implements Repository {
 
     @Override
     public CompletableFuture<Content> value(final Key key) {
-        return this.storage.value(key);
+        return this.asto.value(key);
+    }
+
+    @Override
+    public Storage storage() {
+        return this.asto;
+    }
+
+    @Override
+    public CompletableFuture<Boolean> exists(final Key key) {
+        return this.asto.exists(key);
+    }
+
+    @Override
+    public CompletableFuture<Void> save(final Key key, final Content content) {
+        return this.asto.save(key, content);
+    }
+
+    @Override
+    public <T> CompletionStage<T> exclusively(
+        final Key key,
+        final Function<Storage, CompletionStage<T>> operation
+    ) {
+        return this.asto.exclusively(key, operation);
+    }
+
+    @Override
+    public CompletableFuture<Void> move(final Key source, final Key destination) {
+        return this.asto.move(source, destination);
+    }
+
+    @Override
+    public CompletableFuture<Void> delete(final Key key) {
+        return this.asto.delete(key);
     }
 
     /**
@@ -180,7 +215,7 @@ public final class AstoRepository implements Repository {
      */
     private static JsonObject addVersion(final JsonObject compos, final Archive.Name name) {
         return Json.createObjectBuilder(compos)
-            .add("version", name.version())
+            .add(JsonPackage.VRSN, name.version())
             .build();
     }
 
@@ -218,11 +253,11 @@ public final class AstoRepository implements Repository {
      * @return Packages found by name, might be empty.
      */
     private CompletionStage<Optional<Packages>> packages(final Key key) {
-        return this.storage.exists(key).thenCompose(
+        return this.asto.exists(key).thenCompose(
             exists -> {
                 final CompletionStage<Optional<Packages>> packages;
                 if (exists) {
-                    packages = this.storage.value(key)
+                    packages = this.asto.value(key)
                         .thenApply(JsonPackages::new)
                         .thenApply(Optional::of);
                 } else {

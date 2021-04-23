@@ -21,22 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.artipie.composer.http;
+package com.artipie.composer.http.proxy;
 
+import com.artipie.asto.Key;
+import com.artipie.asto.Storage;
+import com.artipie.asto.blocking.BlockingStorage;
+import com.artipie.asto.cache.Cache;
 import com.artipie.asto.fs.FileStorage;
 import com.artipie.asto.test.TestResource;
+import com.artipie.composer.AllPackages;
 import com.artipie.composer.AstoRepository;
 import com.artipie.composer.test.ComposerSimple;
-import com.artipie.composer.test.HttpUrlUpload;
+import com.artipie.composer.test.PackageSimple;
+import com.artipie.composer.test.SourceServer;
+import com.artipie.http.client.auth.Authenticator;
+import com.artipie.http.client.jetty.JettyClientSlices;
 import com.artipie.http.misc.RandomFreePort;
 import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -54,19 +62,22 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 
 /**
- * Integration test for PHP Composer repository for working
- * with archive in ZIP format.
- *
+ * Integration test for {@link ComposerProxySlice}.
  * @since 0.4
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @DisabledOnOs(OS.WINDOWS)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-final class HttpZipArchiveIT {
+final class ComposerProxySliceIT {
     /**
-     * Vertx instance for using in test.
+     * Vertx instance.
      */
     private static final Vertx VERTX = Vertx.vertx();
+
+    /**
+     * Jetty client.
+     */
+    private final JettyClientSlices client = new JettyClientSlices();
 
     /**
      * Temporary directory.
@@ -74,14 +85,19 @@ final class HttpZipArchiveIT {
     private Path tmp;
 
     /**
-     * HTTP server hosting repository.
+     * Vertx slice server instance.
      */
     private VertxSliceServer server;
 
     /**
-     * Test container.
+     * Container.
      */
     private GenericContainer<?> cntn;
+
+    /**
+     * Storage.
+     */
+    private Storage storage;
 
     /**
      * Server url.
@@ -89,35 +105,50 @@ final class HttpZipArchiveIT {
     private String url;
 
     /**
-     * Server port.
+     * HTTP source server.
      */
-    private int port;
+    private SourceServer sourceserver;
+
+    /**
+     * Free port for starting source server.
+     */
+    private int sourceport;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() throws Exception {
         this.tmp = Files.createTempDirectory("");
-        this.port = new RandomFreePort().get();
-        this.url = String.format("http://host.testcontainers.internal:%s", this.port);
-        final AstoRepository asto = new AstoRepository(
-            new FileStorage(this.tmp), Optional.of(this.url)
-        );
+        this.client.start();
+        this.storage = new FileStorage(this.tmp);
         this.server = new VertxSliceServer(
-            HttpZipArchiveIT.VERTX,
-            new LoggingSlice(new PhpComposer(asto)),
-            this.port
+            ComposerProxySliceIT.VERTX,
+            new LoggingSlice(
+                new ComposerProxySlice(
+                    this.client,
+                    URI.create("https://packagist.org"),
+                    new AstoRepository(this.storage),
+                    Authenticator.ANONYMOUS,
+                    Cache.NOP
+                )
+            )
         );
-        this.server.start();
-        Testcontainers.exposeHostPorts(this.port);
+        final int port = this.server.start();
+        this.sourceport = new RandomFreePort().get();
+        Testcontainers.exposeHostPorts(port, this.sourceport);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
             .withFileSystemBind(this.tmp.toString(), "/home");
         this.cntn.start();
+        this.url = String.format("http://host.testcontainers.internal:%s", port);
     }
 
     @AfterEach
-    void tearDown() {
-        this.server.stop();
+    void tearDown() throws Exception {
+        this.server.close();
+        if (this.sourceserver != null) {
+            this.sourceserver.close();
+        }
+        this.client.stop();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.tmp.toFile());
@@ -129,14 +160,15 @@ final class HttpZipArchiveIT {
 
     @AfterAll
     static void close() {
-        HttpZipArchiveIT.VERTX.close();
+        ComposerProxySliceIT.VERTX.close();
     }
 
     @Test
-    void shouldInstallAddedPackageThroughComposerRepo() throws Exception {
-        this.addArchive();
+    void installsPackageFromRemote() throws Exception {
         new ComposerSimple(this.url, "psr/log", "1.1.3")
             .writeTo(this.tmp.resolve("composer.json"));
+        new TestResource("packages-remote.json")
+            .saveTo(this.storage, new Key.From("packages.json"));
         MatcherAssert.assertThat(
             this.exec("composer", "install", "--verbose", "--no-cache"),
             new AllOf<>(
@@ -153,71 +185,47 @@ final class HttpZipArchiveIT {
     }
 
     @Test
-    void shouldInstallAddedPackageThroughArtifactsRepo() throws Exception {
-        this.addArchive();
-        this.writeComposer("artifacts");
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new AllOf<>(
-                new ListOf<Matcher<? super String>>(
-                    new StringContains(false, "Installs: psr/log:1.1.3"),
-                    new StringContains(false, "- Downloading psr/log (1.1.3)"),
-                    new StringContains(
-                        false,
-                        "- Installing psr/log (1.1.3): Extracting archive"
-                    )
-                )
-            )
+    void installsPackageFromLocal() throws Exception {
+        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
+        final String vers = "1.1.2";
+        this.sourceserver = new SourceServer(ComposerProxySliceIT.VERTX, this.sourceport);
+        new ComposerSimple(this.url, name, vers)
+            .writeTo(this.tmp.resolve("composer.json"));
+        final String pkg = new String(
+            new PackageSimple(this.sourceserver.upload(), name).withSetVersion()
         );
-    }
-
-    @Test
-    void shouldFailGetAbsentInArtifactsPackage() throws Exception {
-        this.tmp.resolve("artifacts").toFile().mkdir();
-        this.writeComposer("artifacts");
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new StringContains(
-                "Root composer.json requires psr/log, it could not be found in any version"
-            )
-        );
-    }
-
-    @Test
-    void shouldFailGetPackageInCaseOfWrongUrl() throws Exception {
-        final String wrong = "wrongfolder";
-        this.tmp.resolve(wrong).toFile().mkdir();
-        this.addArchive();
-        this.writeComposer(wrong);
-        MatcherAssert.assertThat(
-            this.exec("composer", "install", "--verbose", "--no-cache"),
-            new StringContains(
-                "Root composer.json requires psr/log, it could not be found in any version"
-            )
-        );
-    }
-
-    private void addArchive() throws Exception {
-        final String name = "log-1.1.3.zip";
-        new HttpUrlUpload(
-            String.format("http://localhost:%d/%s", this.port, name),
-            new TestResource(name).asBytes()
-        ).upload(Optional.empty());
-    }
-
-    private void writeComposer(final String path) throws IOException {
-        Files.write(
-            this.tmp.resolve("composer.json"),
-            String.join(
-                "",
-                "{",
-                "\"repositories\": [",
-                String.format("{\"type\": \"artifact\", \"url\": \"%s\"},", path),
-                "{\"packagist.org\": false}",
-                "],",
-                "\"require\": { \"psr/log\": \"1.1.3\" }",
-                "}"
+        new BlockingStorage(this.storage).save(
+            new AllPackages(),
+            String.format(
+                "{\"packages\":{\"%s\":{\"%s\":%s}}}", name, vers, pkg
             ).getBytes()
+        );
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            new AllOf<>(
+                new ListOf<Matcher<? super String>>(
+                    new StringContains(false, String.format("Installs: %s:%s", name, vers)),
+                    new StringContains(false, String.format("- Downloading %s (%s)", name, vers)),
+                    new StringContains(
+                        false,
+                        String.format("- Installing %s (%s): Extracting archive", name, vers)
+                    )
+                )
+            )
+        );
+    }
+
+    @Test
+    void failsToInstallWhenPackageAbsent() throws Exception {
+        final String name = "artipie/d8687716-47c1-4de6-a378-0557428fcce7";
+        final String vers = "1.1.2";
+        new ComposerSimple(this.url, name, vers)
+            .writeTo(this.tmp.resolve("composer.json"));
+        new TestResource("packages.json").saveTo(this.storage, new AllPackages());
+        MatcherAssert.assertThat(
+            this.exec("composer", "install", "--verbose", "--no-cache"),
+            // @checkstyle LineLengthCheck (1 line)
+            new StringContains(false, String.format("Root composer.json requires %s, it could not be found in any version", name))
         );
     }
 

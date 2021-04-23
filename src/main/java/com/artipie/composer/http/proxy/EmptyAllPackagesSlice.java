@@ -21,55 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.artipie.composer.http.proxy;
 
-package com.artipie.composer;
-
-import com.artipie.asto.Content;
-import com.artipie.asto.test.TestResource;
-import java.util.Optional;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.core.IsEqual;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import com.artipie.http.Slice;
+import com.artipie.http.rs.RsWithBody;
+import com.artipie.http.rs.StandardRs;
+import com.artipie.http.slice.SliceSimple;
+import java.nio.charset.StandardCharsets;
 
 /**
- * Tests for {@link JsonPackage}.
- *
- * @since 0.1
+ * Slice for obtaining all packages file with empty packages and specified metadata url.
+ * @since 0.4
  */
-class JsonPackageTest {
-
+final class EmptyAllPackagesSlice extends Slice.Wrap {
     /**
-     * Example package read from 'minimal-package.json'.
+     * Ctor.
      */
-    private Package pack;
-
-    @BeforeEach
-    void init()  {
-        this.pack = new JsonPackage(
-            new Content.From(
-                new TestResource("minimal-package.json").asBytes()
+    EmptyAllPackagesSlice() {
+        super(
+            new SliceSimple(
+                new RsWithBody(
+                    StandardRs.OK,
+                    "{\"packages\":{}, \"metadata-url\":\"/p2/%package%.json\"}"
+                        .getBytes(StandardCharsets.UTF_8)
+                )
             )
-        );
-    }
-
-    @Test
-    void shouldExtractName() {
-        MatcherAssert.assertThat(
-            this.pack.name()
-                .toCompletableFuture().join()
-                .key().string(),
-            new IsEqual<>("vendor/package.json")
-        );
-    }
-
-    @Test
-    void shouldExtractVersion() {
-        MatcherAssert.assertThat(
-            this.pack.version(Optional.empty())
-                .toCompletableFuture().join()
-                .get(),
-            new IsEqual<>("1.2.0")
         );
     }
 }

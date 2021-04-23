@@ -23,16 +23,13 @@
  */
 package com.artipie.composer.http;
 
-import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.composer.AstoRepository;
 import com.artipie.composer.test.ComposerSimple;
 import com.artipie.composer.test.HttpUrlUpload;
 import com.artipie.composer.test.PackageSimple;
+import com.artipie.composer.test.SourceServer;
 import com.artipie.composer.test.TestAuthentication;
-import com.artipie.files.FilesSlice;
 import com.artipie.http.Slice;
 import com.artipie.http.auth.JoinedPermissions;
 import com.artipie.http.auth.Permissions;
@@ -41,19 +38,16 @@ import com.artipie.http.slice.LoggingSlice;
 import com.artipie.vertx.VertxSliceServer;
 import com.jcabi.log.Logger;
 import io.vertx.reactivex.core.Vertx;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.cactoos.list.ListOf;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.StringContains;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,14 +69,14 @@ import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 final class RepositoryHttpAuthIT {
     /**
+     * Vertx instance for using in test.
+     */
+    private static final Vertx VERTX = Vertx.vertx();
+
+    /**
      * Temporary directory.
      */
     private Path temp;
-
-    /**
-     * Vert.x instance to use in tests.
-     */
-    private Vertx vertx;
 
     /**
      * Path to PHP project directory.
@@ -97,7 +91,7 @@ final class RepositoryHttpAuthIT {
     /**
      * HTTP source server.
      */
-    private VertxSliceServer sourceserver;
+    private SourceServer sourceserver;
 
     /**
      * Test container.
@@ -109,19 +103,13 @@ final class RepositoryHttpAuthIT {
      */
     private int port;
 
-    /**
-     * Source port for tgz archive.
-     */
-    private int sourceport;
-
     @BeforeEach
     void setUp() throws IOException {
         this.temp = Files.createTempDirectory("");
-        this.vertx = Vertx.vertx();
         this.project = this.temp.resolve("project");
         this.project.toFile().mkdirs();
         this.port = new RandomFreePort().get();
-        this.sourceport = new RandomFreePort().get();
+        final int sourceport = new RandomFreePort().get();
         final Slice slice = new PhpComposer(
             new AstoRepository(new InMemoryStorage()),
             new JoinedPermissions(
@@ -130,9 +118,14 @@ final class RepositoryHttpAuthIT {
             ),
             new TestAuthentication()
         );
-        this.server = new VertxSliceServer(this.vertx, new LoggingSlice(slice), this.port);
+        this.server = new VertxSliceServer(
+            RepositoryHttpAuthIT.VERTX,
+            new LoggingSlice(slice),
+            this.port
+        );
         this.server.start();
-        Testcontainers.exposeHostPorts(this.port, this.sourceport);
+        this.sourceserver = new SourceServer(RepositoryHttpAuthIT.VERTX, sourceport);
+        Testcontainers.exposeHostPorts(this.port, sourceport);
         this.cntn = new GenericContainer<>("composer:2.0.9")
             .withCommand("tail", "-f", "/dev/null")
             .withWorkingDirectory("/home/")
@@ -141,19 +134,23 @@ final class RepositoryHttpAuthIT {
     }
 
     @AfterEach
-    @SuppressWarnings("PMD.AvoidPrintStackTrace")
     void tearDown() {
         if (this.sourceserver != null) {
-            this.sourceserver.stop();
+            this.sourceserver.close();
         }
         this.server.stop();
-        this.vertx.close();
         this.cntn.stop();
         try {
             FileUtils.cleanDirectory(this.temp.toFile());
+            Files.deleteIfExists(this.temp);
         } catch (final IOException ex) {
-            ex.printStackTrace();
+            Logger.error(this, "Failed to clean directory %[exception]s", ex);
         }
+    }
+
+    @AfterAll
+    static void close() {
+        RepositoryHttpAuthIT.VERTX.close();
     }
 
     @Test
@@ -190,22 +187,8 @@ final class RepositoryHttpAuthIT {
     private void addPackage() throws Exception {
         new HttpUrlUpload(
             String.format("http://localhost:%s", this.port),
-            new PackageSimple(
-                this.upload(RepositoryHttpAuthIT.emptyZip(), this.sourceport)
-            ).value()
-            .getBytes()
+            new PackageSimple(this.sourceserver.upload()).withSetVersion()
         ).upload(Optional.of(TestAuthentication.ALICE));
-    }
-
-    private String upload(final byte[] content, final int freeport) {
-        final Storage files = new InMemoryStorage();
-        final String name = UUID.randomUUID().toString();
-        new BlockingStorage(files).save(new Key.From(name), content);
-        this.sourceserver = new VertxSliceServer(
-            this.vertx, new LoggingSlice(new FilesSlice(files)), freeport
-        );
-        this.sourceserver.start();
-        return String.format("http://host.testcontainers.internal:%d/%s", freeport, name);
     }
 
     private String exec(final String... command) throws Exception {
@@ -225,13 +208,5 @@ final class RepositoryHttpAuthIT {
             user.password(),
             this.port
         );
-    }
-
-    private static byte[] emptyZip() throws Exception {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        final ZipOutputStream zos = new ZipOutputStream(bos);
-        zos.putNextEntry(new ZipEntry("whatever"));
-        zos.close();
-        return bos.toByteArray();
     }
 }

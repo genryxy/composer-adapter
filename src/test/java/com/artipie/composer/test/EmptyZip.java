@@ -21,55 +21,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.artipie.composer.test;
 
-package com.artipie.composer;
-
-import com.artipie.asto.Content;
-import com.artipie.asto.test.TestResource;
-import java.util.Optional;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.core.IsEqual;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import java.io.ByteArrayOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
- * Tests for {@link JsonPackage}.
- *
- * @since 0.1
+ * Empty ZIP archive for using in tests.
+ * @since 0.4
  */
-class JsonPackageTest {
+public final class EmptyZip {
+    /**
+     * Entry name. As archive should contains whatever.
+     */
+    private final String entry;
 
     /**
-     * Example package read from 'minimal-package.json'.
+     * Ctor.
      */
-    private Package pack;
-
-    @BeforeEach
-    void init()  {
-        this.pack = new JsonPackage(
-            new Content.From(
-                new TestResource("minimal-package.json").asBytes()
-            )
-        );
+    public EmptyZip() {
+        this("whatever");
     }
 
-    @Test
-    void shouldExtractName() {
-        MatcherAssert.assertThat(
-            this.pack.name()
-                .toCompletableFuture().join()
-                .key().string(),
-            new IsEqual<>("vendor/package.json")
-        );
+    /**
+     * Ctor.
+     * @param entry Entry name
+     */
+    public EmptyZip(final String entry) {
+        this.entry = entry;
     }
 
-    @Test
-    void shouldExtractVersion() {
-        MatcherAssert.assertThat(
-            this.pack.version(Optional.empty())
-                .toCompletableFuture().join()
-                .get(),
-            new IsEqual<>("1.2.0")
-        );
+    /**
+     * Obtains ZIP archive.
+     * @return ZIP archive
+     * @throws Exception In case of error during creating ZIP archive
+     */
+    public byte[] value() throws Exception {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final ZipOutputStream zos = new ZipOutputStream(bos);
+        zos.putNextEntry(new ZipEntry(this.entry));
+        zos.close();
+        return bos.toByteArray();
     }
 }
